@@ -1,8 +1,8 @@
 import { Scene } from "phaser";
 
-export class MainMenu extends Scene {
+export class GameOver extends Scene {
     constructor() {
-        super("MainMenu");
+        super("GameOver");
     }
 
     create() {
@@ -30,7 +30,7 @@ export class MainMenu extends Scene {
 
         this.add.text(32, 32, `High Score: ${score}`, textStyle);
 
-        const instructions = ["Clique com o mouse para iniciar"];
+        const instructions = ["Aquiiiiiiiiiiiiiiiiiiiiiiiiii"];
 
         this.add
             .text(512, 550, instructions, textStyle)
@@ -44,7 +44,7 @@ export class MainMenu extends Scene {
         this.input.gamepad.once(
             "down",
             () => {
-                this.scene.start("MainScene");
+                this.scene.start("MainMenu");
             },
             this
         );

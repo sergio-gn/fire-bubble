@@ -19,10 +19,6 @@ export class MainScene extends Scene {
         this.load.image("bg2", "bg2.jpg");
     }
 
-    gameOver() {
-        console.log("gameover");
-    }
-
     create() {
         // Criando o fundo
         this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
@@ -47,9 +43,9 @@ export class MainScene extends Scene {
         this.tweens.add({
             targets: bar,
             width: 0,
-            duration: 50000,
+            duration: 5000,
             repeat: 0,
-            onComplete: this.gameOver,
+            onComplete: () => this.scene.start("GameOver"),
         });
 
         // SCORE SYSTEM
@@ -243,7 +239,7 @@ function createControls(scene, speed = 300) {
                 scene.player.anims.play(animKey, true);
                 return true;
             } else {
-                scene.player.anims.stop();
+                scene.player.anims.play("idle");
                 return false;
             }
         },
@@ -298,7 +294,7 @@ function createNPC(scene) {
                 if (playerMoving) {
                     npc.sprite.anims.play("walk", true);
                 } else {
-                    npc.sprite.anims.stop();
+                    npc.sprite.anims.play("idle");
                 }
             }
         },
