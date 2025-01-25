@@ -28,7 +28,7 @@ export class MainMenu extends Scene
         this.add.text(32, 32, `High Score: ${score}`, textStyle);
 
         const instructions = [
-            'FIRE BUBBLE',
+            'Clique com o mouse para iniciar',
         ]
 
         this.add.text(512, 550, instructions, textStyle).setAlign('center').setOrigin(0.5);
