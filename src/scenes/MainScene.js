@@ -1,50 +1,50 @@
 import { Scene } from 'phaser';
+import Controls from '../utils/controls';
+import NPC from '../utils/npc';
 
-export class MainScene extends Scene
-{
-    player;
-    cursors;
 
-    constructor ()
-    {
-        super('MainScene');
+export class MainScene extends Scene {
+  player;
+  controls;
+  npcs = [];
+
+  constructor() {
+    super('MainScene');
+  }
+
+  preload() {
+    //this.load.setBaseURL('http://localhost:5173/');
+    this.load.setPath('assets');
+    this.load.spritesheet('walk-up', 'animations/walk-up.png', {
+        frameWidth: 98,
+        frameHeight: 136,
+      });
+  }
+
+  create() {
+    this.player = this.physics.add.sprite(400, 500, 'walk-up').setCollideWorldBounds(true);   
+    this.anims.create({
+      key: 'wup',
+      frames: this.anims.generateFrameNumbers('walk-up', { start: 0, end: 5 }),
+      frameRate: 8,
+      repeat: -1,
+    });
+
+    this.controls = new Controls(this,/* this.player,*/ 300);
+    //this.controls.create();
+
+
+    for (let i = 0; i < 10; i++) {
+      const npcInstance = new NPC(this, Phaser.Math.Between(50, 750), Phaser.Math.Between(50, 550));
+      this.npcs.push(npcInstance);
     }
+  }
 
-    preload ()
-    {
-        this.load.setBaseURL('https://cdn.phaserfiles.com/v385');
-        this.load.image('block', 'assets/sprites/block.png');
-    }
+  update() {
+    this.controls.update();
 
-    create ()
-    {
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        this.player = this.physics.add.image(400, 300, 'block');
-
-        this.player.setCollideWorldBounds(true);
-    }
-
-    update ()
-    {
-        this.player.setVelocity(0);
-
-        if (this.cursors.left.isDown)
-        {
-            this.player.setVelocityX(-300);
-        }
-        else if (this.cursors.right.isDown)
-        {
-            this.player.setVelocityX(300);
-        }
-
-        if (this.cursors.up.isDown)
-        {
-            this.player.setVelocityY(-300);
-        }
-        else if (this.cursors.down.isDown)
-        {
-            this.player.setVelocityY(300);
-        }
-    }
+    this.npcs.forEach(npc => {
+      npc.update(this.player, this.npcs);
+    });
+  }
 }
