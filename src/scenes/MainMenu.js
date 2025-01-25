@@ -19,13 +19,13 @@ export class MainMenu extends Scene {
 
         this.add.image(512, 384, "background");
 
-        const logo = this.add.image(512, -270, "logo");
+        const logo = this.add.image(512, 270, "logo").setAlpha(0); // Set initial alpha to 0
 
         this.tweens.add({
             targets: logo,
-            y: 270,
+            alpha: 1, // Fade in
             duration: 1000,
-            ease: "Bounce",
+            ease: "Linear",
         });
 
         this.add.text(32, 32, `High Score: ${score}`, textStyle);
@@ -50,4 +50,3 @@ export class MainMenu extends Scene {
         );
     }
 }
-
