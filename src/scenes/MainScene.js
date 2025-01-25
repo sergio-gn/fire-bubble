@@ -12,7 +12,7 @@ export class MainScene extends Scene {
 
   preload() {
     this.load.setPath('assets');
-    this.load.spritesheet('walk-up', 'animations/walk-up.png', {
+    this.load.spritesheet('mega_sprite', 'animations/mega_sprite.png', {
       frameWidth: 98,
       frameHeight: 136,
     });
@@ -53,13 +53,13 @@ export class MainScene extends Scene {
 
     // Criando o jogador
     this.player = this.physics.add
-      .sprite(1750, 1750, 'walk-up')
+      .sprite(1750, 1750, 'mega_sprite')
       .setCollideWorldBounds(true);
 
     // Criando animações
     this.anims.create({
       key: 'walk',
-      frames: this.anims.generateFrameNumbers('walk-up', { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers('mega_sprite', { start: 0, end: 17 }),
       frameRate: 8,
       repeat: -1,
     });
@@ -114,20 +114,40 @@ function createControls(scene, speed = 300) {
     right: Phaser.Input.Keyboard.KeyCodes.D,
   });
 
+  scene.anims.create({ key: 'walk-right', frames: scene.anims.generateFrameNumbers('mega_sprite', { start: 0, end: 5 }), frameRate: 8, repeat: -1, });
+  scene.anims.create({ key: 'walk-left', frames: scene.anims.generateFrameNumbers('mega_sprite', { start: 0, end: 5 }), frameRate: 8, repeat: -1 });
+  scene.anims.create({ key: 'walk-down', frames: scene.anims.generateFrameNumbers('mega_sprite', { start: 6, end: 11 }), frameRate: 8, repeat: -1 });
+  scene.anims.create({ key: 'walk-up', frames: scene.anims.generateFrameNumbers('mega_sprite', { start: 12, end: 18 }), frameRate: 8, repeat: -1 });
+
   return {
     update() {
       let speedX = 0,
         speedY = 0;
+      let animKey = null;
 
-      if (keys.left.isDown) speedX -= speed;
-      if (keys.right.isDown) speedX += speed;
-      if (keys.up.isDown) speedY -= speed;
-      if (keys.down.isDown) speedY += speed;
+      if (keys.left.isDown) {
+        speedX -= speed;
+        animKey = 'walk-left';
+        scene.player.setFlipX(false); // Flip sprite for left movement
+      }
+      if (keys.right.isDown) {
+        speedX += speed;
+        animKey = 'walk-right';
+        scene.player.setFlipX(true); // Reset flip for right movement
+      }
+      if (keys.up.isDown) {
+        speedY -= speed;
+        animKey = 'walk-up';
+      }
+      if (keys.down.isDown) {
+        speedY += speed;
+        animKey = 'walk-down';
+      }
 
       scene.player.setVelocity(speedX, speedY);
 
-      if (speedX !== 0 || speedY !== 0) {
-        scene.player.anims.play('walk', true);
+      if (animKey) {
+        scene.player.anims.play(animKey, true);
         return true;
       } else {
         scene.player.anims.stop();
@@ -140,10 +160,12 @@ function createControls(scene, speed = 300) {
 function createNPC(scene) {
   const x = Phaser.Math.Between(0, 3500);
   const y = Phaser.Math.Between(0, 3500);
+  const randomFrame = Phaser.Math.Between(0, 18); // Random idle frame on spawn
+
 
   const npc = {
     sprite: scene.physics.add
-      .sprite(x, y, 'walk-up')
+      .sprite(x, y, 'mega_sprite', randomFrame)
       .setCollideWorldBounds(true),
     isFollowing: false,
     isAlly: false,
@@ -165,7 +187,7 @@ function createNPC(scene) {
         const allies = allNpcs.filter((n) => n.isAlly);
         const totalAllies = allies.length;
 
-        // Calcula posição em círculo ao redor do jogador
+        // Calculate circular formation around player
         const index = allies.indexOf(npc);
         const angle = (index / totalAllies) * Phaser.Math.PI2;
         const radius = 100;
@@ -173,19 +195,20 @@ function createNPC(scene) {
         const targetX = player.x + radius * Math.cos(angle);
         const targetY = player.y + radius * Math.sin(angle);
 
-        // Movendo o NPC suavemente para a posição desejada
+        // Smooth movement towards target position
         npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
         npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
 
-        // Aplicando separação para evitar sobreposição
+        // Apply separation to avoid overlapping
         applySeparation(npc, allNpcs);
 
-        // Gerencia animações
+        // Manage animations
         if (playerMoving) {
           npc.sprite.anims.play('walk', true);
         } else {
           npc.sprite.anims.stop();
         }
+
       }
     },
   };
