@@ -68,7 +68,7 @@ export class MainScene extends Scene {
             .setScrollFactor(0);
 
         // Atualiza o score a cada segundo
-        const ScoreByTime = this.time.addEvent({
+        this.time.addEvent({
             delay: 1000,
             callback: () => this.updateScore(),
             loop: true,
