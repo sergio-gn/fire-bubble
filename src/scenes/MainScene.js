@@ -604,9 +604,11 @@ export class MainScene extends Scene {
 
                     this.grunhido.play();
 
+                    this.score += 100;
+
                     // Calcule a nova duração com base no número de NPCs aliados
                     const baseDuration = 20000; // Duração base sem NPCs
-                    const npcMultiplier = 5000; // Fator de multiplicação para diminuir o tempo com cada NPC aliado
+                    const npcMultiplier = 500; // Fator de multiplicação para diminuir o tempo com cada NPC aliado
 
                     // Ajuste a duração com base no número de NPCs aliados
                     const Total =
