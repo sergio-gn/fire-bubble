@@ -6,6 +6,8 @@ export class GameOver extends Scene {
     }
 
     create() {
+        this.cameras.main.setBackgroundColor("#000000");
+
         //  Get the current highscore from the registry
         const score = this.registry.get("highscore");
 
@@ -17,23 +19,14 @@ export class GameOver extends Scene {
             strokeThickness: 8,
         };
 
-        this.add.image(512, 384, "background");
-
-        const logo = this.add.image(512, -270, "logo");
-
-        this.tweens.add({
-            targets: logo,
-            y: 270,
-            duration: 1000,
-            ease: "Bounce",
-        });
+        this.add.image(960, 540, "game_over");
 
         this.add.text(32, 32, `High Score: ${score}`, textStyle);
 
-        const instructions = ["Aquiiiiiiiiiiiiiiiiiiiiiiiiii"];
+        const instructions = ["Clique para tentar de novo!"];
 
         this.add
-            .text(512, 550, instructions, textStyle)
+            .text(960, 900, instructions, textStyle)
             .setAlign("center")
             .setOrigin(0.5);
 
