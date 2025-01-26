@@ -279,7 +279,7 @@ export class MainScene extends Scene {
             loop: true,
         });
 
-        this.adjustBarDuration = this.adjustBarDuration();
+        
     }
 
     spawnObstacle() {
@@ -541,10 +541,10 @@ export class MainScene extends Scene {
         const x = Phaser.Math.Between(0, 3500);
         const y = Phaser.Math.Between(0, 3500);
         const randomFrame = Phaser.Math.Between(0, 3);
-
+    
         // Randomly choose NPC 1 or NPC 2
         const npcChoice = Phaser.Math.Between(1, 2); // Choose either npc1 or npc2
-
+    
         // Set sprite and animations based on the chosen NPC
         let spriteKey, idleAnim, walkAnim;
         if (npcChoice === 1) {
@@ -556,7 +556,7 @@ export class MainScene extends Scene {
             idleAnim = "npc2-idle"; // NPC 2's idle animation
             walkAnim = "npc2-walk"; // NPC 2's walk animation
         }
-
+    
         const npc = {
             sprite: this.physics.add
                 .sprite(x, y, spriteKey, randomFrame) // Use the randomFrame for initial frame
@@ -564,35 +564,79 @@ export class MainScene extends Scene {
                 .play(idleAnim), // Start with the idle animation for the chosen NPC
             isFollowing: false,
             isAlly: false,
-
-            update(player, allNpcs, playerMoving) {
+    
+            update: (player, allNpcs, playerMoving) => {
                 const distanceToPlayer = Phaser.Math.Distance.Between(
                     npc.sprite.x,
                     npc.sprite.y,
                     player.x,
                     player.y
                 );
-
+    
                 if (distanceToPlayer < 50 && !npc.isAlly) {
                     npc.isFollowing = true;
                     npc.isAlly = true;
-                }
+                
+                    console.log("Morrendo mais rápido! Pegou um NPC!");
+                
+                    // Calcule a nova duração com base no número de NPCs aliados
+                    const baseDuration = 20000; // Duração base sem NPCs
+                    const npcMultiplier = 500;  // Fator de multiplicação para diminuir o tempo com cada NPC aliado
+                    
+                    // Ajuste a duração com base no número de NPCs aliados
+                    const Total = (npcMultiplier * allNpcs.filter((n) => n.isAlly).length);
+                    console.log("Total:", Total);
 
+                    const adjustedDuration = baseDuration - Total;
+                    
+                    
+                    
+                    // Se a duração do novo "tween" for diferente da anterior, pare o atual e crie um novo.
+                    if (this.barTween) {
+                        // Verifica se a duração foi alterada e atualiza o tween.
+                        if (this.barTween.duration !== adjustedDuration) {
+                            this.barTween.stop(); // Para a animação existente, mas somente se a duração for diferente
+                            this.barTween = this.tweens.add({
+                                targets: this.bar,
+                                width: 0,
+                                duration: adjustedDuration, // Usando a nova duração calculada
+                                repeat: 0,
+                                onComplete: () => {
+                                    this.destroy();
+                                    this.scene.start("GameOver");
+                                },
+                            });
+                        }
+                    } else {
+                        // Caso não exista um tween ativo, cria um novo.
+                        this.barTween = this.tweens.add({
+                            targets: this.bar,
+                            width: 0,
+                            duration: newDuration,
+                            repeat: 0,
+                            onComplete: () => {
+                                this.destroy();
+                                this.scene.start("GameOver");
+                            },
+                        });
+                    }
+                }
+                
+    
                 if (npc.isAlly && npc.isFollowing) {
-                    this.adjustBarDuration;
                     const allies = allNpcs.filter((n) => n.isAlly);
                     const totalAllies = allies.length;
-
+    
                     const index = allies.indexOf(npc);
                     const angle = (index / totalAllies) * Phaser.Math.PI2;
                     const radius = 100;
-
+    
                     const targetX = player.x + radius * Math.cos(angle);
                     const targetY = player.y + radius * Math.sin(angle);
-
+    
                     npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
                     npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
-
+    
                     // Switch between walk and idle animations based on player movement
                     if (playerMoving) {
                         npc.sprite.anims.play(walkAnim, true); // Play walking animation
@@ -600,16 +644,18 @@ export class MainScene extends Scene {
                         npc.sprite.anims.play(idleAnim, true); // Play idle animation
                     }
                 }
-            },
+            }
         };
-
+    
         return npc;
     }
-
+    
+    
     spawnNPC() {
         const npcInstance = this.createNPC();
         this.npcs.push(npcInstance);
     }
+
 
     createLifeFood() {
         const x = Phaser.Math.Between(0, 3500);
@@ -681,28 +727,5 @@ export class MainScene extends Scene {
         const lifeFoodInstance = this.createLifeFood();
         this.lifeFood.push(lifeFoodInstance);
     }
-    adjustBarDuration() {
-        console.log("morrendo mais rapido");
-        const baseDuration = 20000; // Duração base sem NPCs
-        const npcMultiplier = 5;  // Fator de multiplicação para diminuir o tempo
-    
-        // Reduz a duração conforme o número de NPCs
-        const adjustedDuration = baseDuration - (this.npcs.length * npcMultiplier);
-    
-        // Atualiza a duração do barTween
-        if (this.barTween) {
-            this.barTween.stop(); // Para a animação existente
-        }
-    
-        this.barTween = this.tweens.add({
-            targets: this.bar,
-            width: 0,
-            duration: Math.max(adjustedDuration, 1000), // Garante que a duração não vá para um valor muito baixo
-            repeat: 0,
-            onComplete: () => {
-                this.destroy();
-                this.scene.start("GameOver");
-            },
-        });
-    }    
 }
+
