@@ -61,25 +61,25 @@ export class MainScene extends Scene {
 
         // Barra de Sobrevivência
         this.add
-            .rectangle(780, 32, 468, 32)
+            .rectangle(1600, 32, 468, 32)
             .setStrokeStyle(1, 0xffffff)
             .setDepth(10)
             .setScrollFactor(0);
 
         const bar = this.add
-            .rectangle(780, 32, 468, 28, 0xffffff)
+            .rectangle(1600, 32, 468, 28, 0xffffff)
             .setDepth(10)
             .setScrollFactor(0);
 
         this.add
-            .text(780, 30, "Barra de Sobrevivência", { color: "0x000000" })
+            .text(1600, 30, "Barra de Sobrevivência", { color: "0x000000" })
             .setDepth(10)
             .setScrollFactor(0);
 
         this.tweens.add({
             targets: bar,
             width: 0,
-            duration: 5000,
+            duration: 50000000,
             repeat: 0,
             onComplete: () => {
                 this.destroy();
@@ -119,7 +119,8 @@ export class MainScene extends Scene {
         // Criando o jogador
         this.player = this.physics.add
             .sprite(1750, 1750, "mega_sprite_player")
-            .setCollideWorldBounds(true);
+            .setCollideWorldBounds(true)
+            .setDepth(2);
 
         // this.npc = this.physics.add
         //     .sprite(1750, 1750, "mega_sprite")
@@ -127,7 +128,7 @@ export class MainScene extends Scene {
 
         this.torch = this.physics.add
             .sprite(1780, 1750, "fire_sprite")
-            .setDepth(5);
+            .setDepth(1);
 
         // this.idle = this.physics.add
         //     .sprite(1780, 1750, "idle_sprite")
@@ -441,14 +442,9 @@ function createNPC(scene) {
                 // Manage animations
                 if (playerMoving) {
                     npc.sprite.anims.play("walk-npc", true);
-                    console.error(
-                        "NPC sprite não foi inicializado corretamente!",
-                        npc
-                    );
                     return true;
                 } else {
                     npc.sprite.anims.play("idle-npc", true);
-                    console.error("NPC sprite ELSE!", npc);
                     return false;
                 }
             }

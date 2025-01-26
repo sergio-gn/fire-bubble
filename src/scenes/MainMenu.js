@@ -17,9 +17,9 @@ export class MainMenu extends Scene {
             strokeThickness: 8,
         };
 
-        this.add.image(512, 384, "background");
+        this.add.image(960, 540, "background");
 
-        const logo = this.add.image(512, 270, "logo").setAlpha(0); // Set initial alpha to 0
+        const logo = this.add.image(960, 540, "logo").setAlpha(0); // Set initial alpha to 0
 
         this.tweens.add({
             targets: logo,
@@ -33,18 +33,18 @@ export class MainMenu extends Scene {
         const instructions = ["Clique com o mouse para iniciar"];
 
         this.add
-            .text(512, 550, instructions, textStyle)
+            .text(960, 740, instructions, textStyle)
             .setAlign("center")
             .setOrigin(0.5);
 
         this.input.once("pointerdown", () => {
-            this.scene.start("MainScene");
+            this.scene.start("Story");
         });
 
         this.input.gamepad.once(
             "down",
             () => {
-                this.scene.start("MainScene");
+                this.scene.start("Story");
             },
             this
         );
