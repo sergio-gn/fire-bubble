@@ -6,7 +6,7 @@ export class MainScene extends Scene {
         this.player = null;
         this.controls = null;
         this.npcs = [];
-        this.bg2 = null;
+        this.terreno = null;
         this.npcSpawnTimer = null;
 
         // lifeFood System
@@ -82,7 +82,7 @@ export class MainScene extends Scene {
             "obstacles/obstacles.json"
         );
 
-        this.load.image("bg2", "bg2.jpg");
+        this.load.image("terreno", "terreno.jpg");
     }
 
     create() {
@@ -92,13 +92,9 @@ export class MainScene extends Scene {
         });
 
         // Criando o fundo
-        this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
-        this.bg2.setDisplaySize(3500, 3500).setDepth(-1);
+        this.terreno = this.add.image(0, 0, "terreno").setOrigin(0, 0);
+        this.terreno.setDisplaySize(3500, 3500).setDepth(-1);
 
-        // Criando todos os obstáculos de uma vez no início
-        for (let i = 0; i < 10; i++) {
-            this.spawnObstacle();
-        }
         //Fire Bubble
         this.fire_bubble = this.physics.add
             .image(500, 500, "fire_bubble")
@@ -168,7 +164,11 @@ export class MainScene extends Scene {
             .sprite(1750, 1750, "mega_sprite_player")
             .setCollideWorldBounds(true)
             .setDepth(2);
-
+            
+        // Criando todos os obstáculos de uma vez no início
+        for (let i = 0; i < 10; i++) {
+            this.spawnObstacle();
+        }
         this.torch = this.physics.add
             .sprite(1780, 1750, "fire_sprite")
             .setDepth(1);
@@ -277,6 +277,8 @@ export class MainScene extends Scene {
             callback: () => this.spawnLifeFood(),
             loop: true,
         });
+
+        this.adjustBarDuration = this.adjustBarDuration();
     }
 
     spawnObstacle() {
@@ -298,15 +300,26 @@ export class MainScene extends Scene {
         const randomX = Phaser.Math.RND.between(0, 3500);
         const randomY = Phaser.Math.RND.between(0, 3500);
 
+        const scale = 0.3;
         // Criação do obstáculo
         const obstacle = this.physics.add
             .image(randomX, randomY, "obstacles", randomObstacle)
             .setOrigin(0.5)
-            .setScale(0.4)
-            .setDepth(1);
-    
+            .setScale(scale)
+            .setDepth(1)
+            .setCollideWorldBounds(true)
+            .setImmovable(true);
+
+        const radius = (obstacle.width * scale) / 1.2; // Raio do círculo, metade da largura da imagem escalada
+        obstacle.body.setCircle(radius); // Define uma colisão circular com o raio calculado
+
+        // Agora, definimos a posição da colisão diretamente, sem usar 'setPosition'
+        obstacle.body.position.set(obstacle.x, obstacle.y);
+
         // Adicionar ao array de obstáculos
         this.obstacles.push(obstacle);
+
+        this.physics.add.collider(this.player, obstacle);
     }
 
     update() {
@@ -566,6 +579,7 @@ export class MainScene extends Scene {
                 }
 
                 if (npc.isAlly && npc.isFollowing) {
+                    this.adjustBarDuration;
                     const allies = allNpcs.filter((n) => n.isAlly);
                     const totalAllies = allies.length;
 
@@ -662,4 +676,28 @@ export class MainScene extends Scene {
         const lifeFoodInstance = this.createLifeFood();
         this.lifeFood.push(lifeFoodInstance);
     }
+    adjustBarDuration() {
+        console.log("morrendo mais rapido");
+        const baseDuration = 20000; // Duração base sem NPCs
+        const npcMultiplier = 5;  // Fator de multiplicação para diminuir o tempo
+    
+        // Reduz a duração conforme o número de NPCs
+        const adjustedDuration = baseDuration - (this.npcs.length * npcMultiplier);
+    
+        // Atualiza a duração do barTween
+        if (this.barTween) {
+            this.barTween.stop(); // Para a animação existente
+        }
+    
+        this.barTween = this.tweens.add({
+            targets: this.bar,
+            width: 0,
+            duration: Math.max(adjustedDuration, 1000), // Garante que a duração não vá para um valor muito baixo
+            repeat: 0,
+            onComplete: () => {
+                this.destroy();
+                this.scene.start("GameOver");
+            },
+        });
+    }    
 }

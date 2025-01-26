@@ -31,7 +31,7 @@ export class Preloader extends Scene
         //  Load the assets for the game - Replace with the path to your own assets
         this.load.setPath('assets');
 
-        this.load.image('background', 'background.png');
+        this.load.image('terreno', 'terreno.png');
         this.load.image('fire_bubble', 'fire_bubble.png');
         this.load.image('main_menu_bg', 'main_menu.png');
         this.load.image('fogo', 'fogo.png');

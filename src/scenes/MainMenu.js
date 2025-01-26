@@ -5,7 +5,20 @@ export class MainMenu extends Scene {
         super("MainMenu");
     }
 
+    preload() {
+        // Carregar as músicas
+        this.load.audio("menu_intro", "assets/soundtrack/menu_intro.wav");
+        this.load.audio("menu_loop", "assets/soundtrack/menu_loop.wav");
+        // Carregar o background e o logo
+        this.load.image("main_menu_bg", "assets/background.png");
+        this.load.image("logo", "assets/logo.png");
+    }
+
     create() {
+        // Começar a música de introdução (menu_intro.wav)
+        const introMusic = this.sound.add("menu_intro");
+        introMusic.play();
+
         //  Get the current highscore from the registry
         const score = this.registry.get("highscore");
 
@@ -21,6 +34,7 @@ export class MainMenu extends Scene {
 
         const logo = this.add.image(960, 540, "logo").setAlpha(0); // Set initial alpha to 0
 
+        // Intro - Logo vai aparecer de forma suave (fade-in)
         this.tweens.add({
             targets: logo,
             alpha: 1, // Fade in
@@ -37,16 +51,40 @@ export class MainMenu extends Scene {
             .setAlign("center")
             .setOrigin(0.5);
 
-        this.input.once("pointerdown", () => {
-            this.scene.start("Story");
-        });
+        // Quando a música de introdução terminar, toca a música de loop
+        introMusic.on("complete", () => {
+            // Começar a música de loop (menu_loop.wav)
+            const loopMusic = this.sound.add("menu_loop", { loop: true });
+            loopMusic.play();
 
-        this.input.gamepad.once(
-            "down",
-            () => {
-                this.scene.start("Story");
-            },
-            this
-        );
+            // Permitir interação após a introdução
+            this.time.delayedCall(500, () => {
+                this.input.once("pointerdown", () => {
+                    this.stopAndDestroyMusic(introMusic, loopMusic);
+                    this.scene.start("Story");
+                });
+
+                this.input.gamepad.once(
+                    "down",
+                    () => {
+                        this.stopAndDestroyMusic(introMusic, loopMusic);
+                        this.scene.start("Story");
+                    },
+                    this
+                );
+            });
+        });
+    }
+
+    stopAndDestroyMusic(introMusic, loopMusic) {
+        // Parar as músicas e destruir os objetos de áudio
+        if (introMusic) {
+            introMusic.stop();
+            introMusic.destroy();
+        }
+        if (loopMusic) {
+            loopMusic.stop();
+            loopMusic.destroy();
+        }
     }
 }

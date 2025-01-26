@@ -19,9 +19,6 @@ const config = {
     input: { gamepad: true },
     physics: {
         default: "arcade",
-        arcade: {
-            gravity: { y: 0 },
-        },
     },
     scene: [Boot, Preloader, MainMenu, Story, MainScene, GameOver],
 };
