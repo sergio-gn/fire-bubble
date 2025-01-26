@@ -22,6 +22,8 @@ export class MainScene extends Scene {
     preload() {
         this.load.setPath("assets");
         this.load.image("life_food", "life_food.png");
+        this.load.image("life_food2", "life_food2.png");
+        this.load.image("life_food3", "life_food3.png");
         this.load.image("fire_bubble", "fire_bubble.png");
 
         this.load.spritesheet(
@@ -614,9 +616,13 @@ export class MainScene extends Scene {
     createLifeFood() {
         const x = Phaser.Math.Between(0, 3500);
         const y = Phaser.Math.Between(0, 3500);
+    
+        // Escolhe aleatoriamente entre 'life_food' e 'life_food2'
+        const foodType = Phaser.Math.Between(0, 2) === 0 ? 'life_food' :
+        Phaser.Math.Between(0, 1) === 0 ? 'life_food2' : 'life_food3';
 
-        const food = this.physics.add.sprite(x, y, "life_food").setDepth(1);
-
+        const food = this.physics.add.sprite(x, y, foodType).setDepth(1);
+    
         return {
             sprite: food,
             update: (player) => {
@@ -626,36 +632,36 @@ export class MainScene extends Scene {
                     player.x,
                     player.y
                 );
-
+    
                 if (distance < 50) {
                     if (this.bar.width !== 468) {
                         console.log("Comida coletada!");
-
+    
                         food.destroy();
-
+    
                         // Remove do array de comidas
                         this.lifeFood = this.lifeFood.filter(
                             (f) => f.sprite !== food
                         );
-
+    
                         // Para o tween atual
                         this.barTween.stop();
-
+    
                         console.log("Largura antes:", this.bar.width);
-
+    
                         // Ajusta a largura da barra sem recriá-la
                         const newWidth = Math.min(
                             this.bar.width + (5 / 20) * 468,
                             468
                         );
                         this.bar.width = newWidth;
-
+    
                         this.bar.displayWidth = newWidth;
                         console.log("Nova largura:", this.bar.width);
-
+    
                         // Reinicia o tween ajustando o tempo restante
                         const newDuration = 20000 * (newWidth / 468);
-
+    
                         this.barTween = this.tweens.add({
                             targets: this.bar,
                             width: 0,
@@ -671,6 +677,7 @@ export class MainScene extends Scene {
             },
         };
     }
+    
 
     spawnLifeFood() {
         const lifeFoodInstance = this.createLifeFood();
