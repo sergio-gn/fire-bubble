@@ -6,61 +6,138 @@ export class MainScene extends Scene {
         this.player = null;
         this.controls = null;
         this.npcs = [];
-        this.bg2 = null;
+        this.terreno = null;
         this.npcSpawnTimer = null;
-        this.lifeFood = []; // Definição da variável lifeFood
-        this.BarDuration = 20000;
-        this.barTween = null; // Armazenando o tween da barra
+
+        // lifeFood System
+        this.lifeFood = [];
+        this.bar = null;
+        this.barTween = null;
+        this.score = 0;
+        this.scoreText = null;
+
+        this.obstacles = [];
     }
 
     preload() {
         this.load.setPath("assets");
-        this.load.spritesheet("mega_sprite", "animations/mega_sprite.png", {
+        this.load.image("life_food", "life_food.png");
+        this.load.image("life_food2", "life_food2.png");
+        this.load.image("life_food3", "life_food3.png");
+        this.load.image("fire_bubble", "fire_bubble.png");
+
+        this.load.spritesheet(
+            "mega_sprite_player",
+            "animations/mega_sprite_holding_fire.png",
+            {
+                frameWidth: 120,
+                frameHeight: 136,
+            }
+        );
+        this.load.spritesheet("idle_sprite", "animations/idle_sprite.png", {
             frameWidth: 98,
             frameHeight: 136,
         });
-        this.load.image("bg2", "bg2.jpg");
-        this.load.image("life_food", "life_food.png"); // Certifique-se de carregar o asset correto
+        this.load.spritesheet(
+            "idle_sprite_player",
+            "animations/idle_holding_fire.png",
+            {
+                frameWidth: 120,
+                frameHeight: 136,
+            }
+        );
+        this.load.spritesheet(
+            "npc1_walk",
+            "animations/mega_spritesheet_npc_1.png",
+            {
+                frameWidth: 98,
+                frameHeight: 136,
+            }
+        );
+
+        this.load.spritesheet("npc1_idle", "animations/npc_idle_1.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
+
+        this.load.spritesheet(
+            "npc2_walk",
+            "animations/mega_spritesheet_npc_2.png",
+            {
+                frameWidth: 98,
+                frameHeight: 136,
+            }
+        );
+
+        this.load.spritesheet("npc2_idle", "animations/npc_idle_2.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
+        this.load.spritesheet("fire_sprite", "animations/fire_sprite.png", {
+            frameWidth: 49,
+            frameHeight: 102,
+        });
+
+        this.load.atlas(
+            "obstacles",
+            "obstacles/spritesheet.png",
+            "obstacles/obstacles.json"
+        );
+
+        this.load.image("terreno", "terreno.jpg");
     }
 
     create() {
-        // Criando o fundo
-        this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
-        this.bg2.setDisplaySize(3500, 3500).setDepth(-1);
+        // Configurando evento de shutdown para limpar a cena
+        this.events.on("shutdown", () => {
+            this.destroy();
+        });
 
+        // Criando o fundo
+        this.terreno = this.add.image(0, 0, "terreno").setOrigin(0, 0);
+        this.terreno.setDisplaySize(3500, 3500).setDepth(-1);
+
+        //Fire Bubble
+        this.fire_bubble = this.physics.add
+            .image(500, 500, "fire_bubble")
+            .setOrigin(0.5)
+            .setDisplaySize(400, 400)
+            .setDepth(3);
+
+        // Barra de Sobrevivência
         this.add
-            .rectangle(780, 32, 468, 32)
+            .rectangle(1600, 32, 468, 32)
             .setStrokeStyle(1, 0xffffff)
             .setDepth(10)
             .setScrollFactor(0);
 
-
-        // Criando o retângulo da barra de sobrevivência
-        const bar = this.add
-            .rectangle(780, 32, 468, 28, 0xffffff)
-            .setDepth(10)
-            .setScrollFactor(0)
-            .setName("bar"); // Definindo um nome para identificar a barra depois
-
-
-        this.add
-            .text(780, 30, "Barra de Sobrevivência", { color: "0x000000" })
+        this.bar = this.add
+            .rectangle(1600, 32, 468, 28, 0xffffff)
             .setDepth(10)
             .setScrollFactor(0);
 
-        // Criando o tween da barra de sobrevivência
+        this.add
+            .text(1600, 30, "Barra de Sobrevivência", { color: "0x000000" })
+            .setDepth(10)
+            .setScrollFactor(0);
+
         this.barTween = this.tweens.add({
-            targets: bar,
+            targets: this.bar,
             width: 0,
-            duration: this.BarDuration, // Usando o valor atualizado de BarDuration
+            duration: 20000,
             repeat: 0,
-            onComplete: () => this.scene.start("GameOver"),
+            onComplete: () => {
+                this.destroy();
+                this.scene.start("GameOver");
+            },
         });
 
         // SCORE SYSTEM
         const highscore = this.registry.get("highscore");
-        this.score =
+        this.highscore =
             highscore !== null && highscore !== undefined ? highscore : 0;
+
+        this.score = 0;
 
         const textStyle = {
             fontFamily: "Verdana",
@@ -85,14 +162,21 @@ export class MainScene extends Scene {
 
         // Criando o jogador
         this.player = this.physics.add
-            .sprite(1750, 1750, "mega_sprite")
+            .sprite(1750, 1750, "mega_sprite_player")
             .setCollideWorldBounds(true)
+            .setDepth(2);
+            
+        // Criando todos os obstáculos de uma vez no início
+        for (let i = 0; i < 10; i++) {
+            this.spawnObstacle();
+        }
+        this.torch = this.physics.add
+            .sprite(1780, 1750, "fire_sprite")
             .setDepth(1);
 
-        // Criando animações
         this.anims.create({
             key: "walk",
-            frames: this.anims.generateFrameNumbers("mega_sprite", {
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
                 start: 0,
                 end: 17,
             }),
@@ -100,8 +184,68 @@ export class MainScene extends Scene {
             repeat: -1,
         });
 
+        this.anims.create({
+            key: "torch",
+            frames: this.anims.generateFrameNumbers("fire_sprite", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("idle_sprite_player", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "npc1-walk",
+            frames: this.anims.generateFrameNumbers("npc1_walk", {
+                start: 0,
+                end: 18,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "npc1-idle",
+            frames: this.anims.generateFrameNumbers("npc1_idle", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "npc2-walk",
+            frames: this.anims.generateFrameNumbers("npc2_walk", {
+                start: 0,
+                end: 18,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "npc2-idle",
+            frames: this.anims.generateFrameNumbers("npc2_idle", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
         // Configurando os controles
-        this.controls = createControls(this, 300);
+        this.controls = this.createControls(300);
 
         // Configurando a câmera
         this.cameras.main.setBounds(0, 0, 3500, 3500);
@@ -110,32 +254,73 @@ export class MainScene extends Scene {
 
         // Criando NPCs inicialmente
         for (let i = 0; i < 10; i++) {
-            const npcInstance = createNPC(this);
+            const npcInstance = this.createNPC();
             this.npcs.push(npcInstance);
         }
 
         // Timer para criar NPCs continuamente
         this.npcSpawnTimer = this.time.addEvent({
             delay: 4000,
-            callback: () => spawnNPC(this),
-            loop: true,
-        });
-
-        // Criando lifeFoods inicialmente
-        for (let i = 0; i < 5; i++) {
-            const lifeFoodInstance = createLifeFood(this);
-            this.lifeFood.push(lifeFoodInstance);
-        }
-
-        // Timer para criar lifeFood continuamente
-        this.lifeFoodSpawnTimer = this.time.addEvent({
-            delay: 4000,
-            callback: () => spawnLifeFood(this),
+            callback: () => this.spawnNPC(),
             loop: true,
         });
 
         // Definindo os limites do mundo
         this.physics.world.setBounds(0, 0, 3500, 3500);
+
+        // Life Food
+        for (let i = 0; i < 5; i++) {
+            const lifeFoodInstance = this.createLifeFood();
+            this.lifeFood.push(lifeFoodInstance);
+        }
+        this.time.addEvent({
+            delay: 4000,
+            callback: () => this.spawnLifeFood(),
+            loop: true,
+        });
+
+        this.adjustBarDuration = this.adjustBarDuration();
+    }
+
+    spawnObstacle() {
+        // Imagem aleatória dos obstáculos
+        const obstacleTypes = [
+            "Cenario1.png",
+            "Cenario2.png",
+            "Cenario3.png",
+            "Cenario4.png",
+            "Cenario5.png",
+            "Cenario6.png",
+            "Cenario7.png",
+            "Cenario8.png",
+            "Cenario9.png",
+        ]; // Nome das imagens de obstáculos carregadas
+        const randomObstacle = Phaser.Math.RND.pick(obstacleTypes);
+
+        // Posição aleatória dentro dos limites do mapa
+        const randomX = Phaser.Math.RND.between(0, 3500);
+        const randomY = Phaser.Math.RND.between(0, 3500);
+
+        const scale = 0.3;
+        // Criação do obstáculo
+        const obstacle = this.physics.add
+            .image(randomX, randomY, "obstacles", randomObstacle)
+            .setOrigin(0.5)
+            .setScale(scale)
+            .setDepth(1)
+            .setCollideWorldBounds(true)
+            .setImmovable(true);
+
+        const radius = (obstacle.width * scale) / 1.2; // Raio do círculo, metade da largura da imagem escalada
+        obstacle.body.setCircle(radius); // Define uma colisão circular com o raio calculado
+
+        // Agora, definimos a posição da colisão diretamente, sem usar 'setPosition'
+        obstacle.body.position.set(obstacle.x, obstacle.y);
+
+        // Adicionar ao array de obstáculos
+        this.obstacles.push(obstacle);
+
+        this.physics.add.collider(this.player, obstacle);
     }
 
   update() {
@@ -145,260 +330,379 @@ export class MainScene extends Scene {
           npc.update(this.player, this.npcs, this.player.body.velocity.x !== 0 || this.player.body.velocity.y !== 0);
       });
 
-        // Atualizando lifeFood
         this.lifeFood.forEach((food) => {
             food.update(this.player);
         });
+
+        const speed = 0.05; // Adjust speed for smooth following
+        this.fire_bubble.x = Phaser.Math.Interpolation.Linear(
+            [this.fire_bubble.x, this.player.x],
+            speed
+        );
+        this.fire_bubble.y = Phaser.Math.Interpolation.Linear(
+            [this.fire_bubble.y, this.player.y],
+            speed
+        );
     }
 
     updateScore() {
         this.score += 10;
         this.scoreText.setText(`Score: ${this.score}`);
-        console.log(`Score atualizado: ${this.score}`);
         this.registry.set("highscore", this.score);
     }
-}
 
-function createControls(scene, speed = 300) {
-    const keys = scene.input.keyboard.addKeys({
-        up: Phaser.Input.Keyboard.KeyCodes.W,
-        down: Phaser.Input.Keyboard.KeyCodes.S,
-        left: Phaser.Input.Keyboard.KeyCodes.A,
-        right: Phaser.Input.Keyboard.KeyCodes.D,
-    });
+    destroy() {
+        if (this.npcSpawnTimer) {
+            this.npcSpawnTimer.remove();
+            this.npcSpawnTimer = null;
+        }
+        this.npcs.forEach((npc) => npc.sprite.destroy());
+        this.npcs = [];
 
-    scene.anims.create({
-        key: "walk-right",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-left",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-down",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 6,
-            end: 11,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-up",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 12,
-            end: 17,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
+        this.time.removeAllEvents();
+    }
 
-    return {
-        update() {
-            let speedX = 0,
-                speedY = 0;
-            let animKey = null;
+    createControls(speed) {
+        const keys = this.input.keyboard.addKeys({
+            up: Phaser.Input.Keyboard.KeyCodes.W,
+            down: Phaser.Input.Keyboard.KeyCodes.S,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            right: Phaser.Input.Keyboard.KeyCodes.D,
+        });
 
-            const pad = scene.input.gamepad.getPad(0);
+        this.anims.create({
+            key: "walk-right",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 12,
+                end: 17,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "walk-left",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 18,
+                end: 23,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "walk-down",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 0,
+                end: 5,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "walk-up",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 6,
+                end: 11,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "fire-torch",
+            frames: this.anims.generateFrameNumbers("fire_sprite", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("idle_sprite_player", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        const npcConfigs = [
+            {
+                id: "npc1",
+                walkSprite: "mega_spritesheet_npc_1",
+                idleSprite: "npc_idle_1",
+            },
+            {
+                id: "npc2",
+                walkSprite: "mega_spritesheet_npc_2",
+                idleSprite: "npc_idle_2",
+            },
+        ];
 
-            const leftStickX = pad?.axes[0].getValue(),
-                leftStickY = pad?.axes[1].getValue();
+        npcConfigs.forEach((npc) => {
+            this.anims.create({
+                key: `idle-${npc.id}`,
+                frames: this.anims.generateFrameNumbers(npc.idleSprite, {
+                    start: 0,
+                    end: 3,
+                }),
+                frameRate: 8,
+                repeat: -1,
+            });
 
-            if (leftStickX > 0.25) {
-                speedX += speed;
-                animKey = "walk-right";
-                scene.player.setFlipX(true);
-            }
+            this.anims.create({
+                key: `walk-${npc.id}`,
+                frames: this.anims.generateFrameNumbers(npc.walkSprite, {
+                    start: 0,
+                    end: 17,
+                }),
+                frameRate: 8,
+                repeat: -1,
+            });
+        });
 
-            if (leftStickX < -0.25) {
-                speedX -= speed;
-                animKey = "walk-left";
-                scene.player.setFlipX(false);
-            }
+        this.torch.anims.play("fire-torch");
 
-            if (leftStickY > 0.25) {
-                speedY += speed;
-                animKey = "walk-down";
-            }
+        return {
+            update: () => {
+                let speedX = 0,
+                    speedY = 0;
+                let animKey = null;
 
-            if (leftStickY < -0.25) {
-                speedY -= speed;
-                animKey = "walk-up";
-            }
+                const pad = this.input?.gamepad.getPad(0);
 
-            if (keys.left.isDown) {
-                speedX -= speed;
-                animKey = "walk-left";
-                scene.player.setFlipX(false);
-            }
-            if (keys.right.isDown) {
-                speedX += speed;
-                animKey = "walk-right";
-                scene.player.setFlipX(true);
-            }
-            if (keys.up.isDown) {
-                speedY -= speed;
-                animKey = "walk-up";
-            }
-            if (keys.down.isDown) {
-                speedY += speed;
-                animKey = "walk-down";
-            }
+                // if (this.gamepadDetected) {
+                const leftStickX = pad?.axes[0].getValue(),
+                    leftStickY = pad?.axes[1].getValue();
 
-            scene.player.setVelocity(speedX, speedY);
+                // const gamepad = pads[0];
 
-            if (animKey) {
-                scene.player.anims.play(animKey, true);
-                return true;
-            } else {
-                scene.player.anims.play("idle");
-                return false;
-            }
-        },
-    };
-}
+                const up = leftStickY < -0.25 || keys.up.isDown;
+                const down = leftStickY > 0.25 || keys.down.isDown;
+                const left = leftStickX < -0.25 || keys.left.isDown;
+                const right = leftStickX > 0.25 || keys.right.isDown;
 
-function createNPC(scene) {
-    const x = Phaser.Math.Between(0, 3500);
-    const y = Phaser.Math.Between(0, 3500);
-    const randomFrame = Phaser.Math.Between(0, 17);
-
-    const npc = {
-        sprite: scene.physics.add
-            .sprite(x, y, "mega_sprite", randomFrame)
-            .setCollideWorldBounds(true),
-        isFollowing: false,
-        isAlly: false,
-
-        update(player, allNpcs, playerMoving) {
-            const distanceToPlayer = Phaser.Math.Distance.Between(
-                npc.sprite.x,
-                npc.sprite.y,
-                player.x,
-                player.y
-            );
-
-            if (distanceToPlayer < 50 && !npc.isAlly) {
-                npc.isFollowing = true;
-                npc.isAlly = true;
-            }
-
-            if (npc.isAlly && npc.isFollowing) {
-                const allies = allNpcs.filter((n) => n.isAlly);
-                const totalAllies = allies.length;
-
-                const index = allies.indexOf(npc);
-                const angle = (index / totalAllies) * Phaser.Math.PI2;
-                const radius = 100;
-
-                const targetX = player.x + radius * Math.cos(angle);
-                const targetY = player.y + radius * Math.sin(angle);
-
-                npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
-                npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
-
-                applySeparation(npc, allNpcs);
-
-                if (playerMoving) {
-                    npc.sprite.anims.play("walk", true);
-                } else {
-                    npc.sprite.anims.play("idle");
+                if (up) {
+                    speedY -= speed;
+                    animKey = "walk-up";
                 }
-            }
-        },
-    };
+                if (right) {
+                    speedX += speed;
+                    animKey = "walk-right";
+                }
+                if (down) {
+                    speedY += speed;
+                    animKey = "walk-down";
+                }
+                if (left) {
+                    speedX -= speed;
+                    animKey = "walk-left";
+                }
+                if (up && !right && !down && !left) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
+                if (up && right && !down && !left) {
+                    this.torch.setPosition(this.player.x + 50, this.player.y);
+                }
+                if (!up && right && !down && !left) {
+                    this.torch.setPosition(this.player.x + 50, this.player.y);
+                }
+                if (!up && right && down && !left) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
+                if (!up && !right && down && !left) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
+                if (!up && !right && down && left) {
+                    this.torch.setPosition(this.player.x - 30, this.player.y);
+                }
+                if (!up && !right && !down && left) {
+                    this.torch.setPosition(this.player.x - 30, this.player.y);
+                }
+                if (up && !right && !down && left) {
+                    this.torch.setPosition(this.player.x - 30, this.player.y);
+                }
+                if (!up && !left && !right && !down) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
 
-    return npc;
-}
+                this.player.setVelocity(speedX, speedY);
+                this.torch.setVelocity(speedX, speedY);
 
-function createLifeFood(scene) {
-  const x = Phaser.Math.Between(0, 3500);
-  const y = Phaser.Math.Between(0, 3500);
+                if (animKey) {
+                    this.player.anims.play(animKey, true);
+                    return true;
+                } else {
+                    this.player.anims.play("idle", true);
+                }
+            },
+        };
+    }
 
-  const lifeFood = {
-      sprite: scene.physics.add.sprite(x, y, "life_food").setCollideWorldBounds(true),
+    createNPC() {
+        const x = Phaser.Math.Between(0, 3500);
+        const y = Phaser.Math.Between(0, 3500);
+        const randomFrame = Phaser.Math.Between(0, 3);
 
-      update(player) {
-          const distanceToPlayer = Phaser.Math.Distance.Between(
-              lifeFood.sprite.x,
-              lifeFood.sprite.y,
-              player.x,
-              player.y
-          );
+        // Randomly choose NPC 1 or NPC 2
+        const npcChoice = Phaser.Math.Between(1, 2); // Choose either npc1 or npc2
 
-          if (distanceToPlayer < 50) {
-              // Quando o jogador coleta o lifeFood, aumente a barra de sobrevivência
-              scene.BarDuration += 5000; // Adiciona 5 segundos
-              console.log('Barra de sobrevivência aumentada! Novo tempo:', scene.BarDuration);
+        // Set sprite and animations based on the chosen NPC
+        let spriteKey, idleAnim, walkAnim;
+        if (npcChoice === 1) {
+            spriteKey = "npc1_idle"; // NPC 1's idle sprite
+            idleAnim = "npc1-idle"; // NPC 1's idle animation
+            walkAnim = "npc1-walk"; // NPC 1's walk animation
+        } else {
+            spriteKey = "npc2_idle"; // NPC 2's idle sprite
+            idleAnim = "npc2-idle"; // NPC 2's idle animation
+            walkAnim = "npc2-walk"; // NPC 2's walk animation
+        }
 
-              lifeFood.sprite.destroy(); // Remove o item de vida do mundo
+        const npc = {
+            sprite: this.physics.add
+                .sprite(x, y, spriteKey, randomFrame) // Use the randomFrame for initial frame
+                .setCollideWorldBounds(true)
+                .play(idleAnim), // Start with the idle animation for the chosen NPC
+            isFollowing: false,
+            isAlly: false,
 
-              // Para o tween da barra atual
-              scene.barTween.stop();
-
-              // Atualiza a largura da barra com o novo valor de duração
-              scene.barTween = scene.tweens.add({
-                  targets: scene.children.getByName("bar"), // Acessa diretamente o objeto da barra
-                  width: 0,
-                  duration: scene.BarDuration, // Atualiza com o novo valor
-                  ease: 'Linear', // Assegura uma transição contínua
-                  repeat: 0,
-                  onComplete: () => scene.scene.start("GameOver"),
-              });
-          }
-      },
-  };
-
-  return lifeFood;
-}
-
-
-
-
-function spawnNPC(scene) {
-    const npcInstance = createNPC(scene);
-    scene.npcs.push(npcInstance);
-}
-
-function spawnLifeFood(scene) {
-    const lifeFoodInstance = createLifeFood(scene);
-    scene.lifeFood.push(lifeFoodInstance);
-}
-
-function applySeparation(npc, allNpcs) {
-    const separationDistance = 50; // Distância mínima entre NPCs
-    allNpcs.forEach((otherNpc) => {
-        if (otherNpc !== npc) {
-            const distance = Phaser.Math.Distance.Between(
-                npc.sprite.x,
-                npc.sprite.y,
-                otherNpc.sprite.x,
-                otherNpc.sprite.y
-            );
-
-            if (distance < separationDistance) {
-                const angle = Phaser.Math.Angle.Between(
-                    otherNpc.sprite.x,
-                    otherNpc.sprite.y,
+            update(player, allNpcs, playerMoving) {
+                const distanceToPlayer = Phaser.Math.Distance.Between(
                     npc.sprite.x,
-                    npc.sprite.y
+                    npc.sprite.y,
+                    player.x,
+                    player.y
                 );
 
-                const offset = separationDistance - distance;
-                npc.sprite.x += Math.cos(angle) * offset * 0.1;
-                npc.sprite.y += Math.sin(angle) * offset * 0.1;
-            }
+                if (distanceToPlayer < 50 && !npc.isAlly) {
+                    npc.isFollowing = true;
+                    npc.isAlly = true;
+                }
+
+                if (npc.isAlly && npc.isFollowing) {
+                    this.adjustBarDuration;
+                    const allies = allNpcs.filter((n) => n.isAlly);
+                    const totalAllies = allies.length;
+
+                    const index = allies.indexOf(npc);
+                    const angle = (index / totalAllies) * Phaser.Math.PI2;
+                    const radius = 100;
+
+                    const targetX = player.x + radius * Math.cos(angle);
+                    const targetY = player.y + radius * Math.sin(angle);
+
+                    npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
+                    npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
+
+                    // Switch between walk and idle animations based on player movement
+                    if (playerMoving) {
+                        npc.sprite.anims.play(walkAnim, true); // Play walking animation
+                    } else {
+                        npc.sprite.anims.play(idleAnim, true); // Play idle animation
+                    }
+                }
+            },
+        };
+
+        return npc;
+    }
+
+    spawnNPC() {
+        const npcInstance = this.createNPC();
+        this.npcs.push(npcInstance);
+    }
+
+    createLifeFood() {
+        const x = Phaser.Math.Between(0, 3500);
+        const y = Phaser.Math.Between(0, 3500);
+    
+        // Escolhe aleatoriamente entre 'life_food' e 'life_food2'
+        const foodType = Phaser.Math.Between(0, 2) === 0 ? 'life_food' :
+        Phaser.Math.Between(0, 1) === 0 ? 'life_food2' : 'life_food3';
+
+        const food = this.physics.add.sprite(x, y, foodType).setDepth(1);
+    
+        return {
+            sprite: food,
+            update: (player) => {
+                const distance = Phaser.Math.Distance.Between(
+                    food.x,
+                    food.y,
+                    player.x,
+                    player.y
+                );
+    
+                if (distance < 50) {
+                    if (this.bar.width !== 468) {
+                        console.log("Comida coletada!");
+    
+                        food.destroy();
+    
+                        // Remove do array de comidas
+                        this.lifeFood = this.lifeFood.filter(
+                            (f) => f.sprite !== food
+                        );
+    
+                        // Para o tween atual
+                        this.barTween.stop();
+    
+                        console.log("Largura antes:", this.bar.width);
+    
+                        // Ajusta a largura da barra sem recriá-la
+                        const newWidth = Math.min(
+                            this.bar.width + (5 / 20) * 468,
+                            468
+                        );
+                        this.bar.width = newWidth;
+    
+                        this.bar.displayWidth = newWidth;
+                        console.log("Nova largura:", this.bar.width);
+    
+                        // Reinicia o tween ajustando o tempo restante
+                        const newDuration = 20000 * (newWidth / 468);
+    
+                        this.barTween = this.tweens.add({
+                            targets: this.bar,
+                            width: 0,
+                            duration: newDuration,
+                            repeat: 0,
+                            onComplete: () => {
+                                this.destroy();
+                                this.scene.start("GameOver");
+                            },
+                        });
+                    }
+                }
+            },
+        };
+    }
+    
+
+    spawnLifeFood() {
+        const lifeFoodInstance = this.createLifeFood();
+        this.lifeFood.push(lifeFoodInstance);
+    }
+    adjustBarDuration() {
+        console.log("morrendo mais rapido");
+        const baseDuration = 20000; // Duração base sem NPCs
+        const npcMultiplier = 5;  // Fator de multiplicação para diminuir o tempo
+    
+        // Reduz a duração conforme o número de NPCs
+        const adjustedDuration = baseDuration - (this.npcs.length * npcMultiplier);
+    
+        // Atualiza a duração do barTween
+        if (this.barTween) {
+            this.barTween.stop(); // Para a animação existente
         }
-    });
+    
+        this.barTween = this.tweens.add({
+            targets: this.bar,
+            width: 0,
+            duration: Math.max(adjustedDuration, 1000), // Garante que a duração não vá para um valor muito baixo
+            repeat: 0,
+            onComplete: () => {
+                this.destroy();
+                this.scene.start("GameOver");
+            },
+        });
+    }    
 }
