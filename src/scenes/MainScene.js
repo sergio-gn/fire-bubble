@@ -26,6 +26,10 @@ export class MainScene extends Scene {
         this.load.image("life_food3", "life_food3.png");
         this.load.image("fire_bubble", "fire_bubble.png");
 
+
+        this.load.audio("grunhido", "soundtrack/grunhido.wav", { cache: true });
+        this.load.audio("pick_item", "soundtrack/pick_item.wav", { cache: true });
+
         this.load.spritesheet(
             "mega_sprite_player",
             "animations/mega_sprite_holding_fire.png",
@@ -54,12 +58,10 @@ export class MainScene extends Scene {
                 frameHeight: 136,
             }
         );
-
         this.load.spritesheet("npc1_idle", "animations/npc_idle_1.png", {
             frameWidth: 98,
             frameHeight: 136,
         });
-
         this.load.spritesheet(
             "npc2_walk",
             "animations/mega_spritesheet_npc_2.png",
@@ -85,9 +87,27 @@ export class MainScene extends Scene {
         );
 
         this.load.image("terreno", "terreno.jpg");
+
+        this.load.audio("gameplay_intro", "soundtrack/gameplay_intro.wav");
+        this.load.audio("gameplay_loop", "soundtrack/gameplay_loop.wav");
     }
 
     create() {
+        // Começar a música de introdução (trovao.wav)
+        this.grunhido = this.sound.add("grunhido");
+
+        // Começar a música de introdução (gameplay_intro.wav)
+        this.pickItem = this.sound.add("pick_item");
+
+        const introMusic = this.sound.add("gameplay_intro")
+
+        // Quando a música de introdução terminar, toca a música de loop
+        introMusic.on("complete", () => {
+            // Começar a música de loop (menu_loop.wav)
+            const loopMusic = this.sound.add("gameplay_loop", { loop: true });
+            loopMusic.play();
+        });
+
         // Configurando evento de shutdown para limpar a cena
         this.events.on("shutdown", () => {
             this.destroy();
@@ -582,6 +602,8 @@ export class MainScene extends Scene {
 
                     console.log("Morrendo mais rápido! Pegou um NPC!");
 
+                    this.grunhido.play();
+
                     // Calcule a nova duração com base no número de NPCs aliados
                     const baseDuration = 20000; // Duração base sem NPCs
                     const npcMultiplier = 5000; // Fator de multiplicação para diminuir o tempo com cada NPC aliado
@@ -687,6 +709,8 @@ export class MainScene extends Scene {
                     if (this.bar.width !== 468) {
                         console.log("Comida coletada!");
 
+                        this.pickItem.play();
+
                         food.destroy();
 
                         // Remove do array de comidas
@@ -733,4 +757,3 @@ export class MainScene extends Scene {
         this.lifeFood.push(lifeFoodInstance);
     }
 }
-

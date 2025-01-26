@@ -5,10 +5,19 @@ export class Story extends Scene {
         super("Story");
     }
 
+    preload() {
+        this.load.audio("trovao", "assets/soundtrack/trovao.wav");
+    }
+
     create() {
         const fogo = this.add.image(960, 540, "fogo");
         const trovao = this.add.image(960, 540, "trovao");
-
+        // Carregar as músicas
+        this.load.audio("trovao", "assets/soundtrack/trovao.wav");
+        // Começar a música de introdução (trovao.wav)
+        const introTrovao = this.sound.add("trovao");
+        introTrovao.play();
+        
         this.time.delayedCall(1000, () => {
             trovao.destroy(); // Remove o trovão após 1 segundo
 

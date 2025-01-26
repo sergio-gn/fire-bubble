@@ -38,6 +38,22 @@ export class Preloader extends Scene
         this.load.image('trovao', 'trovao.png');
         this.load.image('game_over', 'game_over.png');
         this.load.image('logo', 'cc-logo.png');
+
+        // Carregar as músicas
+        this.load.audio("menu_intro", "assets/soundtrack/menu_intro.wav");
+        this.load.audio("menu_loop", "assets/soundtrack/menu_loop.wav");
+
+        this.load.audio("gameplay_intro", "assets/soundtrack/gameplay_intro.wav");
+        this.load.audio("gameplay_loop", "assets/soundtrack/gameplay_loop.wav");
+
+        this.load.audio("trovao", "assets/soundtrack/trovao.wav");
+        this.load.audio("grunhido", "assets/soundtrack/grunhido.wav");
+        this.load.audio("fire_bubble_som", "assets/soundtrack/fire_bubble.wav");
+        this.load.audio("pick_item", "assets/soundtrack/pick_item.wav");
+
+        // Carregar o background e o logo
+        this.load.image("main_menu_bg", "assets/background.png");
+        this.load.image("logo", "assets/logo.png");
     }
 
     create ()
