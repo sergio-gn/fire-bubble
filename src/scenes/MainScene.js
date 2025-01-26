@@ -449,7 +449,6 @@ export class MainScene extends Scene {
         return npc;
     }
 
-
     spawnNPC() {
         const npcInstance = this.createNPC();
         this.npcs.push(npcInstance);
