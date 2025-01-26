@@ -10,20 +10,56 @@ export class MainScene extends Scene {
         this.npcSpawnTimer = null;
     }
 
+    init() {
+        this.npcs = [];
+        this.npcSpawnTimer = null;
+        this.score = 0;
+    }
+
     preload() {
         this.load.setPath("assets");
         this.load.spritesheet("mega_sprite", "animations/mega_sprite.png", {
             frameWidth: 98,
             frameHeight: 136,
         });
+        this.load.spritesheet(
+            "mega_sprite_player",
+            "animations/mega_sprite_holding_fire.png",
+            {
+                frameWidth: 120,
+                frameHeight: 136,
+            }
+        );
+        this.load.spritesheet("idle_sprite", "animations/idle_sprite.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
+        this.load.spritesheet(
+            "idle_sprite_player",
+            "animations/idle_holding_fire.png",
+            {
+                frameWidth: 120,
+                frameHeight: 136,
+            }
+        );
+        this.load.spritesheet("fire_sprite", "animations/fire_sprite.png", {
+            frameWidth: 49,
+            frameHeight: 102,
+        });
         this.load.image("bg2", "bg2.jpg");
     }
 
     create() {
+        // Configurando evento de shutdown para limpar a cena
+        this.events.on("shutdown", () => {
+            this.destroy();
+        });
+
         // Criando o fundo
         this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
         this.bg2.setDisplaySize(3500, 3500).setDepth(-1);
 
+        // Barra de Sobrevivência
         this.add
             .rectangle(780, 32, 468, 32)
             .setStrokeStyle(1, 0xffffff)
@@ -45,13 +81,18 @@ export class MainScene extends Scene {
             width: 0,
             duration: 5000,
             repeat: 0,
-            onComplete: () => this.scene.start("GameOver"),
+            onComplete: () => {
+                this.destroy();
+                this.scene.start("GameOver");
+            },
         });
 
         // SCORE SYSTEM
         const highscore = this.registry.get("highscore");
-        this.score =
+        this.highscore =
             highscore !== null && highscore !== undefined ? highscore : 0;
+
+        this.score = 0;
 
         const textStyle = {
             fontFamily: "Verdana",
@@ -77,15 +118,67 @@ export class MainScene extends Scene {
 
         // Criando o jogador
         this.player = this.physics.add
-            .sprite(1750, 1750, "mega_sprite")
+            .sprite(1750, 1750, "mega_sprite_player")
             .setCollideWorldBounds(true);
+
+        // this.npc = this.physics.add
+        //     .sprite(1750, 1750, "mega_sprite")
+        //     .setCollideWorldBounds(true);
+
+        this.torch = this.physics.add
+            .sprite(1780, 1750, "fire_sprite")
+            .setDepth(5);
+
+        // this.idle = this.physics.add
+        //     .sprite(1780, 1750, "idle_sprite")
+        //     .setDepth(5);
 
         // Criando animações
         this.anims.create({
             key: "walk",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 0,
+                end: 17,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "walk-npc",
             frames: this.anims.generateFrameNumbers("mega_sprite", {
                 start: 0,
                 end: 17,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "torch",
+            frames: this.anims.generateFrameNumbers("fire_sprite", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("idle_sprite_player", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+
+        this.anims.create({
+            key: "idle-npc",
+            frames: this.anims.generateFrameNumbers("idle_sprite", {
+                start: 0,
+                end: 3,
             }),
             frameRate: 8,
             repeat: -1,
@@ -131,6 +224,17 @@ export class MainScene extends Scene {
         console.log(`Score atualizado: ${this.score}`);
         this.registry.set("highscore", this.score);
     }
+
+    destroy() {
+        if (this.npcSpawnTimer) {
+            this.npcSpawnTimer.remove();
+            this.npcSpawnTimer = null;
+        }
+        this.npcs.forEach((npc) => npc.sprite.destroy());
+        this.npcs = [];
+
+        this.time.removeAllEvents();
+    }
 }
 
 function createControls(scene, speed = 300) {
@@ -143,40 +247,72 @@ function createControls(scene, speed = 300) {
 
     scene.anims.create({
         key: "walk-right",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-left",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-down",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 6,
-            end: 11,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-up",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
+        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
             start: 12,
             end: 17,
         }),
         frameRate: 8,
         repeat: -1,
     });
+    scene.anims.create({
+        key: "walk-left",
+        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
+            start: 12,
+            end: 17,
+        }),
+        frameRate: 8,
+        repeat: -1,
+    });
+    scene.anims.create({
+        key: "walk-down",
+        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
+            start: 0,
+            end: 5,
+        }),
+        frameRate: 8,
+        repeat: -1,
+    });
+    scene.anims.create({
+        key: "walk-up",
+        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
+            start: 6,
+            end: 11,
+        }),
+        frameRate: 8,
+        repeat: -1,
+    });
+
+    scene.anims.create({
+        key: "fire-torch",
+        frames: scene.anims.generateFrameNumbers("fire_sprite", {
+            start: 0,
+            end: 3,
+        }),
+        frameRate: 8,
+        repeat: -1,
+    });
+
+    scene.anims.create({
+        key: "idle",
+        frames: scene.anims.generateFrameNumbers("idle_sprite_player", {
+            start: 0,
+            end: 3,
+        }),
+        frameRate: 8,
+        repeat: -1,
+    });
+
+    scene.anims.create({
+        key: "idle-npc",
+        frames: scene.anims.generateFrameNumbers("idle_sprite", {
+            start: 0,
+            end: 3,
+        }),
+        frameRate: 8,
+        repeat: -1,
+    });
+
+    scene.torch.anims.play("fire-torch");
 
     return {
         update() {
@@ -192,55 +328,67 @@ function createControls(scene, speed = 300) {
 
             // const gamepad = pads[0];
 
-            if (leftStickX > 0.25) {
+            const up = leftStickY < -0.25 || keys.up.isDown;
+            const down = leftStickY > 0.25 || keys.down.isDown;
+            const left = leftStickX < -0.25 || keys.left.isDown;
+            const right = leftStickX > 0.25 || keys.right.isDown;
+
+            if (up) {
+                speedY -= speed;
+                animKey = "walk-up";
+                if (left) {
+                    scene.torch.setPosition(
+                        scene.player.x + 30,
+                        scene.player.y
+                    );
+                }
+                if (right) {
+                    scene.torch.setPosition(
+                        scene.player.x - 30,
+                        scene.player.y
+                    );
+                }
+            }
+            if (right) {
                 speedX += speed;
                 animKey = "walk-right";
                 scene.player.setFlipX(true);
+                scene.torch.setPosition(scene.player.x + 30, scene.player.y);
             }
-
-            if (leftStickX < -0.25) {
+            if (down) {
+                speedY += speed;
+                animKey = "walk-down";
+                if (left) {
+                    scene.torch.setPosition(
+                        scene.player.x + 30,
+                        scene.player.y
+                    );
+                }
+                if (right) {
+                    scene.torch.setPosition(
+                        scene.player.x - 30,
+                        scene.player.y
+                    );
+                }
+            }
+            if (left) {
                 speedX -= speed;
                 animKey = "walk-left";
                 scene.player.setFlipX(false);
-            }
-
-            if (leftStickY > 0.25) {
-                speedY += speed;
-                animKey = "walk-down";
-            }
-
-            if (leftStickY < -0.25) {
-                speedY -= speed;
-                animKey = "walk-up";
-            }
-
-            if (keys.left.isDown) {
-                speedX -= speed;
-                animKey = "walk-left";
-                scene.player.setFlipX(false); // Flip sprite for left movement
-            }
-            if (keys.right.isDown) {
-                speedX += speed;
-                animKey = "walk-right";
-                scene.player.setFlipX(true); // Reset flip for right movement
-            }
-            if (keys.up.isDown) {
-                speedY -= speed;
-                animKey = "walk-up";
-            }
-            if (keys.down.isDown) {
-                speedY += speed;
-                animKey = "walk-down";
+                scene.torch.setPosition(scene.player.x - 30, scene.player.y);
             }
 
             scene.player.setVelocity(speedX, speedY);
+            scene.torch.setVelocity(speedX, speedY);
 
             if (animKey) {
                 scene.player.anims.play(animKey, true);
                 return true;
             } else {
-                scene.player.anims.play("idle");
-                return false;
+                scene.torch.setPosition(scene.player.x + 30, scene.player.y);
+
+                    scene.player.setFlipX(false);
+                scene.player.anims.play("idle", true);
             }
         },
     };
@@ -249,12 +397,12 @@ function createControls(scene, speed = 300) {
 function createNPC(scene) {
     const x = Phaser.Math.Between(0, 3500);
     const y = Phaser.Math.Between(0, 3500);
-    const randomFrame = Phaser.Math.Between(0, 17); // Random idle frame on spawn
 
     const npc = {
         sprite: scene.physics.add
-            .sprite(x, y, "mega_sprite", randomFrame)
-            .setCollideWorldBounds(true),
+            .sprite(x, y, "idle-npc", 0)
+            .setCollideWorldBounds(true)
+            .play("idle-npc"),
         isFollowing: false,
         isAlly: false,
 
@@ -292,9 +440,16 @@ function createNPC(scene) {
 
                 // Manage animations
                 if (playerMoving) {
-                    npc.sprite.anims.play("walk", true);
+                    npc.sprite.anims.play("walk-npc", true);
+                    console.error(
+                        "NPC sprite não foi inicializado corretamente!",
+                        npc
+                    );
+                    return true;
                 } else {
-                    npc.sprite.anims.play("idle");
+                    npc.sprite.anims.play("idle-npc", true);
+                    console.error("NPC sprite ELSE!", npc);
+                    return false;
                 }
             }
         },

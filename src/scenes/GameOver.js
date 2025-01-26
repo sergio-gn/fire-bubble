@@ -6,6 +6,8 @@ export class GameOver extends Scene {
     }
 
     create() {
+        this.cameras.main.setBackgroundColor("#000000");
+
         //  Get the current highscore from the registry
         const score = this.registry.get("highscore");
 
