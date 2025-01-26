@@ -19,14 +19,14 @@ export class GameOver extends Scene {
             strokeThickness: 8,
         };
 
-        this.add.image(512, 384, "game_over");
+        this.add.image(960, 540, "game_over");
 
         this.add.text(32, 32, `High Score: ${score}`, textStyle);
 
         const instructions = ["Clique para tentar de novo!"];
 
         this.add
-            .text(512, 600, instructions, textStyle)
+            .text(960, 540, instructions, textStyle)
             .setAlign("center")
             .setOrigin(0.5);
 

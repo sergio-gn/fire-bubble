@@ -8,16 +8,18 @@ export class MainScene extends Scene {
         this.npcs = [];
         this.bg2 = null;
         this.npcSpawnTimer = null;
-    }
 
-    init() {
-        this.npcs = [];
-        this.npcSpawnTimer = null;
+        // lifeFood System
+        this.lifeFood = [];
+        this.bar = null;
+        this.barTween = null;
         this.score = 0;
+        this.scoreText = null;
     }
 
     preload() {
         this.load.setPath("assets");
+        this.load.image("life_food", "life_food.png");
         this.load.spritesheet("mega_sprite", "animations/mega_sprite.png", {
             frameWidth: 98,
             frameHeight: 136,
@@ -66,7 +68,7 @@ export class MainScene extends Scene {
             .setDepth(10)
             .setScrollFactor(0);
 
-        const bar = this.add
+        this.bar = this.add
             .rectangle(1600, 32, 468, 28, 0xffffff)
             .setDepth(10)
             .setScrollFactor(0);
@@ -76,14 +78,14 @@ export class MainScene extends Scene {
             .setDepth(10)
             .setScrollFactor(0);
 
-        this.tweens.add({
-            targets: bar,
+        this.barTween = this.tweens.add({
+            targets: this.bar,
             width: 0,
-            duration: 50000000,
+            duration: 20000,
             repeat: 0,
             onComplete: () => {
                 this.destroy();
-                this.scene.start("GameOver");
+                this.this.start("GameOver");
             },
         });
 
@@ -130,11 +132,6 @@ export class MainScene extends Scene {
             .sprite(1780, 1750, "fire_sprite")
             .setDepth(1);
 
-        // this.idle = this.physics.add
-        //     .sprite(1780, 1750, "idle_sprite")
-        //     .setDepth(5);
-
-        // Criando animações
         this.anims.create({
             key: "walk",
             frames: this.anims.generateFrameNumbers("mega_sprite_player", {
@@ -186,7 +183,7 @@ export class MainScene extends Scene {
         });
 
         // Configurando os controles
-        this.controls = createControls(this, 300);
+        this.controls = this.createControls(300);
 
         // Configurando a câmera
         this.cameras.main.setBounds(0, 0, 3500, 3500);
@@ -195,19 +192,30 @@ export class MainScene extends Scene {
 
         // Criando NPCs inicialmente
         for (let i = 0; i < 10; i++) {
-            const npcInstance = createNPC(this);
+            const npcInstance = this.createNPC();
             this.npcs.push(npcInstance);
         }
 
         // Timer para criar NPCs continuamente
         this.npcSpawnTimer = this.time.addEvent({
             delay: 4000,
-            callback: () => spawnNPC(this),
+            callback: () => this.spawnNPC(),
             loop: true,
         });
 
         // Definindo os limites do mundo
         this.physics.world.setBounds(0, 0, 3500, 3500);
+
+        // Life Food
+        for (let i = 0; i < 5; i++) {
+            const lifeFoodInstance = this.createLifeFood();
+            this.lifeFood.push(lifeFoodInstance);
+        }
+        this.time.addEvent({
+            delay: 4000,
+            callback: () => this.spawnLifeFood(),
+            loop: true,
+        });
     }
 
     update() {
@@ -217,12 +225,15 @@ export class MainScene extends Scene {
         this.npcs.forEach((npc) => {
             npc.update(this.player, this.npcs, playerMoving);
         });
+
+        this.lifeFood.forEach((food) => {
+            food.update(this.player);
+        });
     }
 
     updateScore() {
         this.score += 10;
         this.scoreText.setText(`Score: ${this.score}`);
-        console.log(`Score atualizado: ${this.score}`);
         this.registry.set("highscore", this.score);
     }
 
@@ -236,253 +247,247 @@ export class MainScene extends Scene {
 
         this.time.removeAllEvents();
     }
-}
 
-function createControls(scene, speed = 300) {
-    const keys = scene.input.keyboard.addKeys({
-        up: Phaser.Input.Keyboard.KeyCodes.W,
-        down: Phaser.Input.Keyboard.KeyCodes.S,
-        left: Phaser.Input.Keyboard.KeyCodes.A,
-        right: Phaser.Input.Keyboard.KeyCodes.D,
-    });
+    createControls(speed) {
+        const keys = this.input.keyboard.addKeys({
+            up: Phaser.Input.Keyboard.KeyCodes.W,
+            down: Phaser.Input.Keyboard.KeyCodes.S,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            right: Phaser.Input.Keyboard.KeyCodes.D,
+        });
 
-    scene.anims.create({
-        key: "walk-right",
-        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
-            start: 12,
-            end: 17,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-left",
-        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
-            start: 12,
-            end: 17,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-down",
-        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-up",
-        frames: scene.anims.generateFrameNumbers("mega_sprite_player", {
-            start: 6,
-            end: 11,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
+        this.anims.create({
+            key: "walk-right",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 12,
+                end: 17,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "walk-left",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 18,
+                end: 23,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "walk-down",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 0,
+                end: 5,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "walk-up",
+            frames: this.anims.generateFrameNumbers("mega_sprite_player", {
+                start: 6,
+                end: 11,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "fire-torch",
+            frames: this.anims.generateFrameNumbers("fire_sprite", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("idle_sprite_player", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.anims.create({
+            key: "idle-npc",
+            frames: this.anims.generateFrameNumbers("idle_sprite", {
+                start: 0,
+                end: 3,
+            }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        this.torch.anims.play("fire-torch");
 
-    scene.anims.create({
-        key: "fire-torch",
-        frames: scene.anims.generateFrameNumbers("fire_sprite", {
-            start: 0,
-            end: 3,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
+        return {
+            update: () => {
+                let speedX = 0,
+                    speedY = 0;
+                let animKey = null;
 
-    scene.anims.create({
-        key: "idle",
-        frames: scene.anims.generateFrameNumbers("idle_sprite_player", {
-            start: 0,
-            end: 3,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
+                const pad = this.input?.gamepad.getPad(0);
 
-    scene.anims.create({
-        key: "idle-npc",
-        frames: scene.anims.generateFrameNumbers("idle_sprite", {
-            start: 0,
-            end: 3,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
+                // if (this.gamepadDetected) {
+                const leftStickX = pad?.axes[0].getValue(),
+                    leftStickY = pad?.axes[1].getValue();
 
-    scene.torch.anims.play("fire-torch");
+                // const gamepad = pads[0];
 
-    return {
-        update() {
-            let speedX = 0,
-                speedY = 0;
-            let animKey = null;
+                const up = leftStickY < -0.25 || keys.up.isDown;
+                const down = leftStickY > 0.25 || keys.down.isDown;
+                const left = leftStickX < -0.25 || keys.left.isDown;
+                const right = leftStickX > 0.25 || keys.right.isDown;
 
-            const pad = scene.input.gamepad.getPad(0);
-
-            // if (this.gamepadDetected) {
-            const leftStickX = pad?.axes[0].getValue(),
-                leftStickY = pad?.axes[1].getValue();
-
-            // const gamepad = pads[0];
-
-            const up = leftStickY < -0.25 || keys.up.isDown;
-            const down = leftStickY > 0.25 || keys.down.isDown;
-            const left = leftStickX < -0.25 || keys.left.isDown;
-            const right = leftStickX > 0.25 || keys.right.isDown;
-
-            if (up) {
-                speedY -= speed;
-                animKey = "walk-up";
-                if (left) {
-                    scene.torch.setPosition(
-                        scene.player.x + 30,
-                        scene.player.y
-                    );
+                if (up) {
+                    speedY -= speed;
+                    animKey = "walk-up";
                 }
                 if (right) {
-                    scene.torch.setPosition(
-                        scene.player.x - 30,
-                        scene.player.y
-                    );
+                    speedX += speed;
+                    animKey = "walk-right";
                 }
-            }
-            if (right) {
-                speedX += speed;
-                animKey = "walk-right";
-                scene.player.setFlipX(true);
-                scene.torch.setPosition(scene.player.x + 30, scene.player.y);
-            }
-            if (down) {
-                speedY += speed;
-                animKey = "walk-down";
+                if (down) {
+                    speedY += speed;
+                    animKey = "walk-down";
+                }
                 if (left) {
-                    scene.torch.setPosition(
-                        scene.player.x + 30,
-                        scene.player.y
-                    );
+                    speedX -= speed;
+                    animKey = "walk-left";
                 }
-                if (right) {
-                    scene.torch.setPosition(
-                        scene.player.x - 30,
-                        scene.player.y
-                    );
+                if (up && !right && !down && !left) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
                 }
-            }
-            if (left) {
-                speedX -= speed;
-                animKey = "walk-left";
-                scene.player.setFlipX(false);
-                scene.torch.setPosition(scene.player.x - 30, scene.player.y);
-            }
+                if (up && right && !down && !left) {
+                    this.torch.setPosition(this.player.x + 50, this.player.y);
+                }
+                if (!up && right && !down && !left) {
+                    this.torch.setPosition(this.player.x + 50, this.player.y);
+                }
+                if (!up && right && down && !left) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
+                if (!up && !right && down && !left) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
+                if (!up && !right && down && left) {
+                    this.torch.setPosition(this.player.x - 30, this.player.y);
+                }
+                if (!up && !right && !down && left) {
+                    this.torch.setPosition(this.player.x - 30, this.player.y);
+                }
+                if (up && !right && !down && left) {
+                    this.torch.setPosition(this.player.x - 30, this.player.y);
+                }
+                if (!up && !left && !right && !down) {
+                    this.torch.setPosition(this.player.x + 30, this.player.y);
+                }
 
-            scene.player.setVelocity(speedX, speedY);
-            scene.torch.setVelocity(speedX, speedY);
+                this.player.setVelocity(speedX, speedY);
+                this.torch.setVelocity(speedX, speedY);
 
-            if (animKey) {
-                scene.player.anims.play(animKey, true);
-                return true;
-            } else {
-                scene.torch.setPosition(scene.player.x + 30, scene.player.y);
-
-                    scene.player.setFlipX(false);
-                scene.player.anims.play("idle", true);
-            }
-        },
-    };
-}
-
-function createNPC(scene) {
-    const x = Phaser.Math.Between(0, 3500);
-    const y = Phaser.Math.Between(0, 3500);
-
-    const npc = {
-        sprite: scene.physics.add
-            .sprite(x, y, "idle-npc", 0)
-            .setCollideWorldBounds(true)
-            .play("idle-npc"),
-        isFollowing: false,
-        isAlly: false,
-
-        update(player, allNpcs, playerMoving) {
-            const distanceToPlayer = Phaser.Math.Distance.Between(
-                npc.sprite.x,
-                npc.sprite.y,
-                player.x,
-                player.y
-            );
-
-            if (distanceToPlayer < 50 && !npc.isAlly) {
-                npc.isFollowing = true;
-                npc.isAlly = true;
-            }
-
-            if (npc.isAlly && npc.isFollowing) {
-                const allies = allNpcs.filter((n) => n.isAlly);
-                const totalAllies = allies.length;
-
-                // Calculate circular formation around player
-                const index = allies.indexOf(npc);
-                const angle = (index / totalAllies) * Phaser.Math.PI2;
-                const radius = 100;
-
-                const targetX = player.x + radius * Math.cos(angle);
-                const targetY = player.y + radius * Math.sin(angle);
-
-                // Smooth movement towards target position
-                npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
-                npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
-
-                // Apply separation to avoid overlapping
-                applySeparation(npc, allNpcs);
-
-                // Manage animations
-                if (playerMoving) {
-                    npc.sprite.anims.play("walk-npc", true);
+                if (animKey) {
+                    this.player.anims.play(animKey, true);
                     return true;
                 } else {
-                    npc.sprite.anims.play("idle-npc", true);
-                    return false;
+                    this.player.anims.play("idle", true);
                 }
-            }
-        },
-    };
+            },
+        };
+    }
 
-    return npc;
-}
-
-function spawnNPC(scene) {
-    const npcInstance = createNPC(scene);
-    scene.npcs.push(npcInstance);
-}
-
-function applySeparation(npc, allNpcs) {
-    const separationDistance = 50; // Distância mínima entre NPCs
-    allNpcs.forEach((otherNpc) => {
-        if (otherNpc !== npc) {
-            const distance = Phaser.Math.Distance.Between(
-                npc.sprite.x,
-                npc.sprite.y,
-                otherNpc.sprite.x,
-                otherNpc.sprite.y
-            );
-
-            if (distance < separationDistance) {
-                const angle = Phaser.Math.Angle.Between(
-                    otherNpc.sprite.x,
-                    otherNpc.sprite.y,
+    createNPC() {
+        const x = Phaser.Math.Between(0, 3500);
+        const y = Phaser.Math.Between(0, 3500);
+        const randomFrame = Phaser.Math.Between(0, 17);
+  
+        const npc = {
+            sprite: this.physics.add
+                .sprite(x, y, "idle-npc", 0)
+                .setCollideWorldBounds(true)
+                .play("idle-npc"),
+            isFollowing: false,
+            isAlly: false,
+  
+            update(player, allNpcs, playerMoving) {
+                const distanceToPlayer = Phaser.Math.Distance.Between(
                     npc.sprite.x,
-                    npc.sprite.y
+                    npc.sprite.y,
+                    player.x,
+                    player.y
+                );
+  
+                if (distanceToPlayer < 50 && !npc.isAlly) {
+                    npc.isFollowing = true;
+                    npc.isAlly = true;
+                }
+  
+                if (npc.isAlly && npc.isFollowing) {
+                    const allies = allNpcs.filter((n) => n.isAlly);
+                    const totalAllies = allies.length;
+  
+                    const index = allies.indexOf(npc);
+                    const angle = (index / totalAllies) * Phaser.Math.PI2;
+                    const radius = 100;
+  
+                    const targetX = player.x + radius * Math.cos(angle);
+                    const targetY = player.y + radius * Math.sin(angle);
+  
+                    npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
+                    npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
+  
+                    if (playerMoving) {
+                        npc.sprite.anims.play("walk-right", true);
+                    } else {
+                        npc.sprite.anims.play("walk-down", true);
+                    }
+                }
+            },
+        };
+  
+        return npc;
+    }
+
+
+    spawnNPC() {
+        const npcInstance = this.createNPC();
+        this.npcs.push(npcInstance);
+    }
+
+    createLifeFood() {
+        const x = Phaser.Math.Between(0, 3500);
+        const y = Phaser.Math.Between(0, 3500);
+
+        const food = this.physics.add.sprite(x, y, "life_food").setDepth(1);
+
+        return {
+            sprite: food,
+            update: (player) => {
+                const distance = Phaser.Math.Distance.Between(
+                    food.x,
+                    food.y,
+                    player.x,
+                    player.y
                 );
 
-                const offset = separationDistance - distance;
-                npc.sprite.x += Math.cos(angle) * offset * 0.1;
-                npc.sprite.y += Math.sin(angle) * offset * 0.1;
-            }
-        }
-    });
-}
+                if (distance < 50) {
+                    food.destroy();
 
+                    // Adiciona 5 segundos ao tempo de sobrevivência da barra
+                    this.barTween.stop();
+                    const remainingWidth = this.bar.width;
+                    this.bar.width = 468; // Reset survival bar to full
+                    this.barTween.restart({
+                        duration: 20000 - (20 - remainingWidth / 468) * 20000, // adjust the duration to reflect the added time
+                    });
+                }
+            },
+        };
+    }
+
+    spawnLifeFood() {
+        const lifeFoodInstance = this.createLifeFood();
+        this.lifeFood.push(lifeFoodInstance);
+    }
+}
