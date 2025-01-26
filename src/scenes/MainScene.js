@@ -8,6 +8,9 @@ export class MainScene extends Scene {
         this.npcs = [];
         this.bg2 = null;
         this.npcSpawnTimer = null;
+        this.lifeFood = []; // Definição da variável lifeFood
+        this.BarDuration = 20000;
+        this.barTween = null; // Armazenando o tween da barra
     }
 
     preload() {
@@ -17,6 +20,7 @@ export class MainScene extends Scene {
             frameHeight: 136,
         });
         this.load.image("bg2", "bg2.jpg");
+        this.load.image("life_food", "life_food.png"); // Certifique-se de carregar o asset correto
     }
 
     create() {
@@ -30,20 +34,25 @@ export class MainScene extends Scene {
             .setDepth(10)
             .setScrollFactor(0);
 
+
+        // Criando o retângulo da barra de sobrevivência
         const bar = this.add
             .rectangle(780, 32, 468, 28, 0xffffff)
             .setDepth(10)
-            .setScrollFactor(0);
+            .setScrollFactor(0)
+            .setName("bar"); // Definindo um nome para identificar a barra depois
+
 
         this.add
             .text(780, 30, "Barra de Sobrevivência", { color: "0x000000" })
             .setDepth(10)
             .setScrollFactor(0);
 
-        this.tweens.add({
+        // Criando o tween da barra de sobrevivência
+        this.barTween = this.tweens.add({
             targets: bar,
             width: 0,
-            duration: 5000,
+            duration: this.BarDuration, // Usando o valor atualizado de BarDuration
             repeat: 0,
             onComplete: () => this.scene.start("GameOver"),
         });
@@ -78,7 +87,8 @@ export class MainScene extends Scene {
         // Criando o jogador
         this.player = this.physics.add
             .sprite(1750, 1750, "mega_sprite")
-            .setCollideWorldBounds(true);
+            .setCollideWorldBounds(true)
+            .setDepth(1);
 
         // Criando animações
         this.anims.create({
@@ -112,6 +122,19 @@ export class MainScene extends Scene {
             loop: true,
         });
 
+        // Criando lifeFoods inicialmente
+        for (let i = 0; i < 5; i++) {
+            const lifeFoodInstance = createLifeFood(this);
+            this.lifeFood.push(lifeFoodInstance);
+        }
+
+        // Timer para criar lifeFood continuamente
+        this.lifeFoodSpawnTimer = this.time.addEvent({
+            delay: 4000,
+            callback: () => spawnLifeFood(this),
+            loop: true,
+        });
+
         // Definindo os limites do mundo
         this.physics.world.setBounds(0, 0, 3500, 3500);
     }
@@ -122,6 +145,11 @@ export class MainScene extends Scene {
         // Atualizando NPCs
         this.npcs.forEach((npc) => {
             npc.update(this.player, this.npcs, playerMoving);
+        });
+
+        // Atualizando lifeFood
+        this.lifeFood.forEach((food) => {
+            food.update(this.player);
         });
     }
 
@@ -186,11 +214,8 @@ function createControls(scene, speed = 300) {
 
             const pad = scene.input.gamepad.getPad(0);
 
-            // if (this.gamepadDetected) {
             const leftStickX = pad?.axes[0].getValue(),
                 leftStickY = pad?.axes[1].getValue();
-
-            // const gamepad = pads[0];
 
             if (leftStickX > 0.25) {
                 speedX += speed;
@@ -217,12 +242,12 @@ function createControls(scene, speed = 300) {
             if (keys.left.isDown) {
                 speedX -= speed;
                 animKey = "walk-left";
-                scene.player.setFlipX(false); // Flip sprite for left movement
+                scene.player.setFlipX(false);
             }
             if (keys.right.isDown) {
                 speedX += speed;
                 animKey = "walk-right";
-                scene.player.setFlipX(true); // Reset flip for right movement
+                scene.player.setFlipX(true);
             }
             if (keys.up.isDown) {
                 speedY -= speed;
@@ -249,7 +274,7 @@ function createControls(scene, speed = 300) {
 function createNPC(scene) {
     const x = Phaser.Math.Between(0, 3500);
     const y = Phaser.Math.Between(0, 3500);
-    const randomFrame = Phaser.Math.Between(0, 17); // Random idle frame on spawn
+    const randomFrame = Phaser.Math.Between(0, 17);
 
     const npc = {
         sprite: scene.physics.add
@@ -275,7 +300,6 @@ function createNPC(scene) {
                 const allies = allNpcs.filter((n) => n.isAlly);
                 const totalAllies = allies.length;
 
-                // Calculate circular formation around player
                 const index = allies.indexOf(npc);
                 const angle = (index / totalAllies) * Phaser.Math.PI2;
                 const radius = 100;
@@ -283,14 +307,11 @@ function createNPC(scene) {
                 const targetX = player.x + radius * Math.cos(angle);
                 const targetY = player.y + radius * Math.sin(angle);
 
-                // Smooth movement towards target position
                 npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
                 npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
 
-                // Apply separation to avoid overlapping
                 applySeparation(npc, allNpcs);
 
-                // Manage animations
                 if (playerMoving) {
                     npc.sprite.anims.play("walk", true);
                 } else {
@@ -303,9 +324,58 @@ function createNPC(scene) {
     return npc;
 }
 
+function createLifeFood(scene) {
+  const x = Phaser.Math.Between(0, 3500);
+  const y = Phaser.Math.Between(0, 3500);
+
+  const lifeFood = {
+      sprite: scene.physics.add.sprite(x, y, "life_food").setCollideWorldBounds(true),
+
+      update(player) {
+          const distanceToPlayer = Phaser.Math.Distance.Between(
+              lifeFood.sprite.x,
+              lifeFood.sprite.y,
+              player.x,
+              player.y
+          );
+
+          if (distanceToPlayer < 50) {
+              // Quando o jogador coleta o lifeFood, aumente a barra de sobrevivência
+              scene.BarDuration += 5000; // Adiciona 5 segundos
+              console.log('Barra de sobrevivência aumentada! Novo tempo:', scene.BarDuration);
+
+              lifeFood.sprite.destroy(); // Remove o item de vida do mundo
+
+              // Para o tween da barra atual
+              scene.barTween.stop();
+
+              // Atualiza a largura da barra com o novo valor de duração
+              scene.barTween = scene.tweens.add({
+                  targets: scene.children.getByName("bar"), // Acessa diretamente o objeto da barra
+                  width: 0,
+                  duration: scene.BarDuration, // Atualiza com o novo valor
+                  ease: 'Linear', // Assegura uma transição contínua
+                  repeat: 0,
+                  onComplete: () => scene.scene.start("GameOver"),
+              });
+          }
+      },
+  };
+
+  return lifeFood;
+}
+
+
+
+
 function spawnNPC(scene) {
     const npcInstance = createNPC(scene);
     scene.npcs.push(npcInstance);
+}
+
+function spawnLifeFood(scene) {
+    const lifeFoodInstance = createLifeFood(scene);
+    scene.lifeFood.push(lifeFoodInstance);
 }
 
 function applySeparation(npc, allNpcs) {
@@ -334,4 +404,3 @@ function applySeparation(npc, allNpcs) {
         }
     });
 }
-
