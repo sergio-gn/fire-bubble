@@ -26,7 +26,7 @@ export class GameOver extends Scene {
         const instructions = ["Clique para tentar de novo!"];
 
         this.add
-            .text(960, 540, instructions, textStyle)
+            .text(960, 900, instructions, textStyle)
             .setAlign("center")
             .setOrigin(0.5);
 
