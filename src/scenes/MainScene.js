@@ -153,19 +153,19 @@ export class MainScene extends Scene {
             .setDepth(1)
             .setScrollFactor(0);
 
-      // Update score every second
-      this.time.addEvent({
-          delay: 1000,
-          callback: () => this.updateScore(),
-          loop: true,
-      });
+        // Update score every second
+        this.time.addEvent({
+            delay: 1000,
+            callback: () => this.updateScore(),
+            loop: true,
+        });
 
         // Criando o jogador
         this.player = this.physics.add
             .sprite(1750, 1750, "mega_sprite_player")
             .setCollideWorldBounds(true)
             .setDepth(2);
-            
+
         // Criando todos os obstáculos de uma vez no início
         for (let i = 0; i < 10; i++) {
             this.spawnObstacle();
@@ -278,8 +278,6 @@ export class MainScene extends Scene {
             callback: () => this.spawnLifeFood(),
             loop: true,
         });
-
-        
     }
 
     spawnObstacle() {
@@ -323,12 +321,17 @@ export class MainScene extends Scene {
         this.physics.add.collider(this.player, obstacle);
     }
 
-  update() {
-      this.controls.update();
+    update() {
+        this.controls.update();
 
-      this.npcs.forEach((npc) => {
-          npc.update(this.player, this.npcs, this.player.body.velocity.x !== 0 || this.player.body.velocity.y !== 0);
-      });
+        this.npcs.forEach((npc) => {
+            npc.update(
+                this.player,
+                this.npcs,
+                this.player.body.velocity.x !== 0 ||
+                    this.player.body.velocity.y !== 0
+            );
+        });
 
         this.lifeFood.forEach((food) => {
             food.update(this.player);
@@ -541,10 +544,10 @@ export class MainScene extends Scene {
         const x = Phaser.Math.Between(0, 3500);
         const y = Phaser.Math.Between(0, 3500);
         const randomFrame = Phaser.Math.Between(0, 3);
-    
+
         // Randomly choose NPC 1 or NPC 2
         const npcChoice = Phaser.Math.Between(1, 2); // Choose either npc1 or npc2
-    
+
         // Set sprite and animations based on the chosen NPC
         let spriteKey, idleAnim, walkAnim;
         if (npcChoice === 1) {
@@ -556,7 +559,7 @@ export class MainScene extends Scene {
             idleAnim = "npc2-idle"; // NPC 2's idle animation
             walkAnim = "npc2-walk"; // NPC 2's walk animation
         }
-    
+
         const npc = {
             sprite: this.physics.add
                 .sprite(x, y, spriteKey, randomFrame) // Use the randomFrame for initial frame
@@ -564,7 +567,7 @@ export class MainScene extends Scene {
                 .play(idleAnim), // Start with the idle animation for the chosen NPC
             isFollowing: false,
             isAlly: false,
-    
+
             update: (player, allNpcs, playerMoving) => {
                 const distanceToPlayer = Phaser.Math.Distance.Between(
                     npc.sprite.x,
@@ -572,29 +575,29 @@ export class MainScene extends Scene {
                     player.x,
                     player.y
                 );
-    
+
                 if (distanceToPlayer < 50 && !npc.isAlly) {
                     npc.isFollowing = true;
                     npc.isAlly = true;
-                
+
                     console.log("Morrendo mais rápido! Pegou um NPC!");
-                
+
                     // Calcule a nova duração com base no número de NPCs aliados
                     const baseDuration = 20000; // Duração base sem NPCs
-                    const npcMultiplier = 500;  // Fator de multiplicação para diminuir o tempo com cada NPC aliado
-                    
+                    const npcMultiplier = 5000; // Fator de multiplicação para diminuir o tempo com cada NPC aliado
+
                     // Ajuste a duração com base no número de NPCs aliados
-                    const Total = (npcMultiplier * allNpcs.filter((n) => n.isAlly).length);
+                    const Total =
+                        npcMultiplier * allNpcs.filter((n) => n.isAlly).length;
                     console.log("Total:", Total);
 
                     const adjustedDuration = baseDuration - Total;
-                    
-                    
-                    
+
                     // Se a duração do novo "tween" for diferente da anterior, pare o atual e crie um novo.
                     if (this.barTween) {
                         // Verifica se a duração foi alterada e atualiza o tween.
                         if (this.barTween.duration !== adjustedDuration) {
+                            console.log("aqui", adjustedDuration);
                             this.barTween.stop(); // Para a animação existente, mas somente se a duração for diferente
                             this.barTween = this.tweens.add({
                                 targets: this.bar,
@@ -609,10 +612,12 @@ export class MainScene extends Scene {
                         }
                     } else {
                         // Caso não exista um tween ativo, cria um novo.
+                        console.log("aqui else", adjustedDuration);
+
                         this.barTween = this.tweens.add({
                             targets: this.bar,
                             width: 0,
-                            duration: newDuration,
+                            duration: adjustedDuration,
                             repeat: 0,
                             onComplete: () => {
                                 this.destroy();
@@ -621,22 +626,21 @@ export class MainScene extends Scene {
                         });
                     }
                 }
-                
-    
+
                 if (npc.isAlly && npc.isFollowing) {
                     const allies = allNpcs.filter((n) => n.isAlly);
                     const totalAllies = allies.length;
-    
+
                     const index = allies.indexOf(npc);
                     const angle = (index / totalAllies) * Phaser.Math.PI2;
                     const radius = 100;
-    
+
                     const targetX = player.x + radius * Math.cos(angle);
                     const targetY = player.y + radius * Math.sin(angle);
-    
+
                     npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
                     npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
-    
+
                     // Switch between walk and idle animations based on player movement
                     if (playerMoving) {
                         npc.sprite.anims.play(walkAnim, true); // Play walking animation
@@ -644,29 +648,31 @@ export class MainScene extends Scene {
                         npc.sprite.anims.play(idleAnim, true); // Play idle animation
                     }
                 }
-            }
+            },
         };
-    
+
         return npc;
     }
-    
-    
+
     spawnNPC() {
         const npcInstance = this.createNPC();
         this.npcs.push(npcInstance);
     }
 
-
     createLifeFood() {
         const x = Phaser.Math.Between(0, 3500);
         const y = Phaser.Math.Between(0, 3500);
-    
+
         // Escolhe aleatoriamente entre 'life_food' e 'life_food2'
-        const foodType = Phaser.Math.Between(0, 2) === 0 ? 'life_food' :
-        Phaser.Math.Between(0, 1) === 0 ? 'life_food2' : 'life_food3';
+        const foodType =
+            Phaser.Math.Between(0, 2) === 0
+                ? "life_food"
+                : Phaser.Math.Between(0, 1) === 0
+                ? "life_food2"
+                : "life_food3";
 
         const food = this.physics.add.sprite(x, y, foodType).setDepth(1);
-    
+
         return {
             sprite: food,
             update: (player) => {
@@ -676,36 +682,36 @@ export class MainScene extends Scene {
                     player.x,
                     player.y
                 );
-    
+
                 if (distance < 50) {
                     if (this.bar.width !== 468) {
                         console.log("Comida coletada!");
-    
+
                         food.destroy();
-    
+
                         // Remove do array de comidas
                         this.lifeFood = this.lifeFood.filter(
                             (f) => f.sprite !== food
                         );
-    
+
                         // Para o tween atual
                         this.barTween.stop();
-    
+
                         console.log("Largura antes:", this.bar.width);
-    
+
                         // Ajusta a largura da barra sem recriá-la
                         const newWidth = Math.min(
                             this.bar.width + (5 / 20) * 468,
                             468
                         );
                         this.bar.width = newWidth;
-    
+
                         this.bar.displayWidth = newWidth;
                         console.log("Nova largura:", this.bar.width);
-    
+
                         // Reinicia o tween ajustando o tempo restante
                         const newDuration = 20000 * (newWidth / 468);
-    
+
                         this.barTween = this.tweens.add({
                             targets: this.bar,
                             width: 0,
@@ -721,7 +727,6 @@ export class MainScene extends Scene {
             },
         };
     }
-    
 
     spawnLifeFood() {
         const lifeFoodInstance = this.createLifeFood();
