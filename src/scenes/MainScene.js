@@ -1,406 +1,309 @@
-import { Scene } from "phaser";
+export class MainScene extends Phaser.Scene {
+  constructor() {
+      super("MainScene");
+      this.player = null;
+      this.controls = null;
+      this.npcs = [];
+      this.bg2 = null;
+      this.npcSpawnTimer = null;
+      this.lifeFood = [];
+      this.bar = null;
+      this.barTween = null;
+      this.score = 0;
+      this.scoreText = null;
+  }
 
-export class MainScene extends Scene {
-    constructor() {
-        super("MainScene");
-        this.player = null;
-        this.controls = null;
-        this.npcs = [];
-        this.bg2 = null;
-        this.npcSpawnTimer = null;
-        this.lifeFood = []; // Definição da variável lifeFood
-        this.BarDuration = 20000;
-        this.barTween = null; // Armazenando o tween da barra
-    }
+  preload() {
+      this.load.setPath("assets");
+      this.load.spritesheet("mega_sprite", "animations/mega_sprite.png", {
+          frameWidth: 98,
+          frameHeight: 136,
+      });
+      this.load.image("bg2", "bg2.jpg");
+      this.load.image("life_food", "life_food.png");
+  }
 
-    preload() {
-        this.load.setPath("assets");
-        this.load.spritesheet("mega_sprite", "animations/mega_sprite.png", {
-            frameWidth: 98,
-            frameHeight: 136,
-        });
-        this.load.image("bg2", "bg2.jpg");
-        this.load.image("life_food", "life_food.png"); // Certifique-se de carregar o asset correto
-    }
+  create() {
+      // Background
+      this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
+      this.bg2.setDisplaySize(3500, 3500).setDepth(-1);
 
-    create() {
-        // Criando o fundo
-        this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
-        this.bg2.setDisplaySize(3500, 3500).setDepth(-1);
+      // Survival bar
+      this.add
+          .rectangle(780, 32, 468, 32)
+          .setStrokeStyle(1, 0xffffff)
+          .setDepth(10)
+          .setScrollFactor(0);
 
-        this.add
-            .rectangle(780, 32, 468, 32)
-            .setStrokeStyle(1, 0xffffff)
-            .setDepth(10)
-            .setScrollFactor(0);
+      this.bar = this.add
+          .rectangle(780, 32, 468, 28, 0xffffff)
+          .setDepth(10)
+          .setScrollFactor(0);
 
+      this.add
+          .text(780, 30, "Barra de Sobrevivência", { color: "#000000" })
+          .setDepth(10)
+          .setScrollFactor(0);
 
-        // Criando o retângulo da barra de sobrevivência
-        const bar = this.add
-            .rectangle(780, 32, 468, 28, 0xffffff)
-            .setDepth(10)
-            .setScrollFactor(0)
-            .setName("bar"); // Definindo um nome para identificar a barra depois
+      // Tween for survival bar
+      this.barTween = this.tweens.add({
+          targets: this.bar,
+          width: 0,
+          duration: 20000, // 20 seconds to deplete
+          repeat: 0,
+          onComplete: () => this.scene.start("GameOver"),
+      });
 
+      // Score
+      this.scoreText = this.add
+          .text(32, 32, `Score: ${this.score}`, {
+              fontFamily: "Verdana",
+              fontSize: 32,
+              color: "#ffffff",
+              stroke: "#000000",
+              strokeThickness: 6,
+          })
+          .setDepth(1)
+          .setScrollFactor(0);
 
-        this.add
-            .text(780, 30, "Barra de Sobrevivência", { color: "0x000000" })
-            .setDepth(10)
-            .setScrollFactor(0);
+      // Update score every second
+      this.time.addEvent({
+          delay: 1000,
+          callback: () => this.updateScore(),
+          loop: true,
+      });
 
-        // Criando o tween da barra de sobrevivência
-        this.barTween = this.tweens.add({
-            targets: bar,
-            width: 0,
-            duration: this.BarDuration, // Usando o valor atualizado de BarDuration
-            repeat: 0,
-            onComplete: () => this.scene.start("GameOver"),
-        });
+      // Player
+      this.player = this.physics.add
+          .sprite(1750, 1750, "mega_sprite")
+          .setCollideWorldBounds(true)
+          .setDepth(1);
 
-        // SCORE SYSTEM
-        const highscore = this.registry.get("highscore");
-        this.score =
-            highscore !== null && highscore !== undefined ? highscore : 0;
+      this.createAnimations();
+      this.controls = this.createControls(300);
 
-        const textStyle = {
-            fontFamily: "Verdana",
-            fontSize: 32,
-            color: "#ffffff",
-            stroke: "#000000",
-            strokeThickness: 6,
-        };
+      // Camera
+      this.cameras.main.setBounds(0, 0, 3500, 3500);
+      this.cameras.main.startFollow(this.player);
+      this.cameras.main.setZoom(1);
 
-        // Texto do score com scroll fixo e profundidade
-        this.scoreText = this.add
-            .text(32, 32, `Score: ${this.score}`, textStyle)
-            .setDepth(1)
-            .setScrollFactor(0);
+      // NPCs
+      for (let i = 0; i < 10; i++) {
+          const npcInstance = this.createNPC();
+          this.npcs.push(npcInstance);
+      }
 
-        // Atualiza o score a cada segundo
-        this.time.addEvent({
-            delay: 1000,
-            callback: () => this.updateScore(),
-            loop: true,
-        });
-        // END SCORE SYSTEM
+      this.npcSpawnTimer = this.time.addEvent({
+          delay: 4000,
+          callback: () => this.spawnNPC(),
+          loop: true,
+      });
 
-        // Criando o jogador
-        this.player = this.physics.add
-            .sprite(1750, 1750, "mega_sprite")
-            .setCollideWorldBounds(true)
-            .setDepth(1);
+      // Life Food
+      for (let i = 0; i < 5; i++) {
+          const lifeFoodInstance = this.createLifeFood();
+          this.lifeFood.push(lifeFoodInstance);
+      }
 
-        // Criando animações
-        this.anims.create({
-            key: "walk",
-            frames: this.anims.generateFrameNumbers("mega_sprite", {
-                start: 0,
-                end: 17,
-            }),
-            frameRate: 8,
-            repeat: -1,
-        });
+      this.time.addEvent({
+          delay: 4000,
+          callback: () => this.spawnLifeFood(),
+          loop: true,
+      });
 
-        // Configurando os controles
-        this.controls = createControls(this, 300);
+      // Physics boundaries
+      this.physics.world.setBounds(0, 0, 3500, 3500);
+  }
 
-        // Configurando a câmera
-        this.cameras.main.setBounds(0, 0, 3500, 3500);
-        this.cameras.main.startFollow(this.player);
-        this.cameras.main.setZoom(1); // Garante que o zoom seja padrão
+  update() {
+      this.controls.update();
 
-        // Criando NPCs inicialmente
-        for (let i = 0; i < 10; i++) {
-            const npcInstance = createNPC(this);
-            this.npcs.push(npcInstance);
-        }
+      this.npcs.forEach((npc) => {
+          npc.update(this.player, this.npcs, this.player.body.velocity.x !== 0 || this.player.body.velocity.y !== 0);
+      });
 
-        // Timer para criar NPCs continuamente
-        this.npcSpawnTimer = this.time.addEvent({
-            delay: 4000,
-            callback: () => spawnNPC(this),
-            loop: true,
-        });
+      this.lifeFood.forEach((food) => {
+          food.update(this.player);
+      });
+  }
 
-        // Criando lifeFoods inicialmente
-        for (let i = 0; i < 5; i++) {
-            const lifeFoodInstance = createLifeFood(this);
-            this.lifeFood.push(lifeFoodInstance);
-        }
+  updateScore() {
+      this.score += 10;
+      this.scoreText.setText(`Score: ${this.score}`);
+  }
 
-        // Timer para criar lifeFood continuamente
-        this.lifeFoodSpawnTimer = this.time.addEvent({
-            delay: 4000,
-            callback: () => spawnLifeFood(this),
-            loop: true,
-        });
+  createAnimations() {
+      this.anims.create({
+          key: "walk-right",
+          frames: this.anims.generateFrameNumbers("mega_sprite", {
+              start: 0,
+              end: 5,
+          }),
+          frameRate: 8,
+          repeat: -1,
+      });
+      this.anims.create({
+          key: "walk-left",
+          frames: this.anims.generateFrameNumbers("mega_sprite", {
+              start: 0,
+              end: 5,
+          }),
+          frameRate: 8,
+          repeat: -1,
+      });
+      this.anims.create({
+          key: "walk-down",
+          frames: this.anims.generateFrameNumbers("mega_sprite", {
+              start: 6,
+              end: 11,
+          }),
+          frameRate: 8,
+          repeat: -1,
+      });
+      this.anims.create({
+          key: "walk-up",
+          frames: this.anims.generateFrameNumbers("mega_sprite", {
+              start: 12,
+              end: 17,
+          }),
+          frameRate: 8,
+          repeat: -1,
+      });
+  }
 
-        // Definindo os limites do mundo
-        this.physics.world.setBounds(0, 0, 3500, 3500);
-    }
+  createControls(speed) {
+      const keys = this.input.keyboard.addKeys({
+          up: Phaser.Input.Keyboard.KeyCodes.W,
+          down: Phaser.Input.Keyboard.KeyCodes.S,
+          left: Phaser.Input.Keyboard.KeyCodes.A,
+          right: Phaser.Input.Keyboard.KeyCodes.D,
+      });
 
-    update() {
-        const playerMoving = this.controls.update();
+      return {
+          update: () => {
+              let speedX = 0,
+                  speedY = 0;
+              let animKey = null;
 
-        // Atualizando NPCs
-        this.npcs.forEach((npc) => {
-            npc.update(this.player, this.npcs, playerMoving);
-        });
+              if (keys.left.isDown) {
+                  speedX -= speed;
+                  animKey = "walk-left";
+                  this.player.setFlipX(false);
+              }
+              if (keys.right.isDown) {
+                  speedX += speed;
+                  animKey = "walk-right";
+                  this.player.setFlipX(true);
+              }
+              if (keys.up.isDown) {
+                  speedY -= speed;
+                  animKey = "walk-up";
+              }
+              if (keys.down.isDown) {
+                  speedY += speed;
+                  animKey = "walk-down";
+              }
 
-        // Atualizando lifeFood
-        this.lifeFood.forEach((food) => {
-            food.update(this.player);
-        });
-    }
+              this.player.setVelocity(speedX, speedY);
 
-    updateScore() {
-        this.score += 10;
-        this.scoreText.setText(`Score: ${this.score}`);
-        console.log(`Score atualizado: ${this.score}`);
-        this.registry.set("highscore", this.score);
-    }
-}
+              if (animKey) {
+                  this.player.anims.play(animKey, true);
+              } else {
+                  this.player.anims.stop();
+              }
+          },
+      };
+  }
 
-function createControls(scene, speed = 300) {
-    const keys = scene.input.keyboard.addKeys({
-        up: Phaser.Input.Keyboard.KeyCodes.W,
-        down: Phaser.Input.Keyboard.KeyCodes.S,
-        left: Phaser.Input.Keyboard.KeyCodes.A,
-        right: Phaser.Input.Keyboard.KeyCodes.D,
-    });
+  createNPC() {
+      const x = Phaser.Math.Between(0, 3500);
+      const y = Phaser.Math.Between(0, 3500);
+      const randomFrame = Phaser.Math.Between(0, 17);
 
-    scene.anims.create({
-        key: "walk-right",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-left",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 0,
-            end: 5,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-down",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 6,
-            end: 11,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
-    scene.anims.create({
-        key: "walk-up",
-        frames: scene.anims.generateFrameNumbers("mega_sprite", {
-            start: 12,
-            end: 17,
-        }),
-        frameRate: 8,
-        repeat: -1,
-    });
+      const npc = {
+          sprite: this.physics.add
+              .sprite(x, y, "mega_sprite", randomFrame)
+              .setCollideWorldBounds(true),
+          isFollowing: false,
+          isAlly: false,
 
-    return {
-        update() {
-            let speedX = 0,
-                speedY = 0;
-            let animKey = null;
+          update(player, allNpcs, playerMoving) {
+              const distanceToPlayer = Phaser.Math.Distance.Between(
+                  npc.sprite.x,
+                  npc.sprite.y,
+                  player.x,
+                  player.y
+              );
 
-            const pad = scene.input.gamepad.getPad(0);
+              if (distanceToPlayer < 50 && !npc.isAlly) {
+                  npc.isFollowing = true;
+                  npc.isAlly = true;
+              }
 
-            const leftStickX = pad?.axes[0].getValue(),
-                leftStickY = pad?.axes[1].getValue();
+              if (npc.isAlly && npc.isFollowing) {
+                  const allies = allNpcs.filter((n) => n.isAlly);
+                  const totalAllies = allies.length;
 
-            if (leftStickX > 0.25) {
-                speedX += speed;
-                animKey = "walk-right";
-                scene.player.setFlipX(true);
-            }
+                  const index = allies.indexOf(npc);
+                  const angle = (index / totalAllies) * Phaser.Math.PI2;
+                  const radius = 100;
 
-            if (leftStickX < -0.25) {
-                speedX -= speed;
-                animKey = "walk-left";
-                scene.player.setFlipX(false);
-            }
+                  const targetX = player.x + radius * Math.cos(angle);
+                  const targetY = player.y + radius * Math.sin(angle);
 
-            if (leftStickY > 0.25) {
-                speedY += speed;
-                animKey = "walk-down";
-            }
+                  npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
+                  npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
 
-            if (leftStickY < -0.25) {
-                speedY -= speed;
-                animKey = "walk-up";
-            }
+                  if (playerMoving) {
+                      npc.sprite.anims.play("walk-right", true);
+                  } else {
+                      npc.sprite.anims.play("walk-down", true);
+                  }
+              }
+          },
+      };
 
-            if (keys.left.isDown) {
-                speedX -= speed;
-                animKey = "walk-left";
-                scene.player.setFlipX(false);
-            }
-            if (keys.right.isDown) {
-                speedX += speed;
-                animKey = "walk-right";
-                scene.player.setFlipX(true);
-            }
-            if (keys.up.isDown) {
-                speedY -= speed;
-                animKey = "walk-up";
-            }
-            if (keys.down.isDown) {
-                speedY += speed;
-                animKey = "walk-down";
-            }
+      return npc;
+  }
 
-            scene.player.setVelocity(speedX, speedY);
+  spawnNPC() {
+      const npcInstance = this.createNPC();
+      this.npcs.push(npcInstance);
+  }
 
-            if (animKey) {
-                scene.player.anims.play(animKey, true);
-                return true;
-            } else {
-                scene.player.anims.play("idle");
-                return false;
-            }
-        },
-    };
-}
-
-function createNPC(scene) {
+  createLifeFood() {
     const x = Phaser.Math.Between(0, 3500);
     const y = Phaser.Math.Between(0, 3500);
-    const randomFrame = Phaser.Math.Between(0, 17);
 
-    const npc = {
-        sprite: scene.physics.add
-            .sprite(x, y, "mega_sprite", randomFrame)
-            .setCollideWorldBounds(true),
-        isFollowing: false,
-        isAlly: false,
+    const food = this.physics.add.sprite(x, y, "life_food").setDepth(1);
 
-        update(player, allNpcs, playerMoving) {
-            const distanceToPlayer = Phaser.Math.Distance.Between(
-                npc.sprite.x,
-                npc.sprite.y,
+    return {
+        sprite: food,
+        update: (player) => {
+            const distance = Phaser.Math.Distance.Between(
+                food.x,
+                food.y,
                 player.x,
                 player.y
             );
 
-            if (distanceToPlayer < 50 && !npc.isAlly) {
-                npc.isFollowing = true;
-                npc.isAlly = true;
-            }
+            if (distance < 50) {
+                food.destroy();
 
-            if (npc.isAlly && npc.isFollowing) {
-                const allies = allNpcs.filter((n) => n.isAlly);
-                const totalAllies = allies.length;
-
-                const index = allies.indexOf(npc);
-                const angle = (index / totalAllies) * Phaser.Math.PI2;
-                const radius = 100;
-
-                const targetX = player.x + radius * Math.cos(angle);
-                const targetY = player.y + radius * Math.sin(angle);
-
-                npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
-                npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
-
-                applySeparation(npc, allNpcs);
-
-                if (playerMoving) {
-                    npc.sprite.anims.play("walk", true);
-                } else {
-                    npc.sprite.anims.play("idle");
-                }
+                // Adiciona 5 segundos ao tempo de sobrevivência da barra
+                this.barTween.stop();
+                const remainingWidth = this.bar.width;
+                this.bar.width = 468; // Reset survival bar to full
+                this.barTween.restart({
+                    duration: 20000 - (20 - remainingWidth / 468) * 20000, // adjust the duration to reflect the added time
+                });
             }
         },
     };
-
-    return npc;
 }
 
-function createLifeFood(scene) {
-  const x = Phaser.Math.Between(0, 3500);
-  const y = Phaser.Math.Between(0, 3500);
-
-  const lifeFood = {
-      sprite: scene.physics.add.sprite(x, y, "life_food").setCollideWorldBounds(true),
-
-      update(player) {
-          const distanceToPlayer = Phaser.Math.Distance.Between(
-              lifeFood.sprite.x,
-              lifeFood.sprite.y,
-              player.x,
-              player.y
-          );
-
-          if (distanceToPlayer < 50) {
-              // Quando o jogador coleta o lifeFood, aumente a barra de sobrevivência
-              scene.BarDuration += 5000; // Adiciona 5 segundos
-              console.log('Barra de sobrevivência aumentada! Novo tempo:', scene.BarDuration);
-
-              lifeFood.sprite.destroy(); // Remove o item de vida do mundo
-
-              // Para o tween da barra atual
-              scene.barTween.stop();
-
-              // Atualiza a largura da barra com o novo valor de duração
-              scene.barTween = scene.tweens.add({
-                  targets: scene.children.getByName("bar"), // Acessa diretamente o objeto da barra
-                  width: 0,
-                  duration: scene.BarDuration, // Atualiza com o novo valor
-                  ease: 'Linear', // Assegura uma transição contínua
-                  repeat: 0,
-                  onComplete: () => scene.scene.start("GameOver"),
-              });
-          }
-      },
-  };
-
-  return lifeFood;
-}
-
-
-
-
-function spawnNPC(scene) {
-    const npcInstance = createNPC(scene);
-    scene.npcs.push(npcInstance);
-}
-
-function spawnLifeFood(scene) {
-    const lifeFoodInstance = createLifeFood(scene);
-    scene.lifeFood.push(lifeFoodInstance);
-}
-
-function applySeparation(npc, allNpcs) {
-    const separationDistance = 50; // Distância mínima entre NPCs
-    allNpcs.forEach((otherNpc) => {
-        if (otherNpc !== npc) {
-            const distance = Phaser.Math.Distance.Between(
-                npc.sprite.x,
-                npc.sprite.y,
-                otherNpc.sprite.x,
-                otherNpc.sprite.y
-            );
-
-            if (distance < separationDistance) {
-                const angle = Phaser.Math.Angle.Between(
-                    otherNpc.sprite.x,
-                    otherNpc.sprite.y,
-                    npc.sprite.x,
-                    npc.sprite.y
-                );
-
-                const offset = separationDistance - distance;
-                npc.sprite.x += Math.cos(angle) * offset * 0.1;
-                npc.sprite.y += Math.sin(angle) * offset * 0.1;
-            }
-        }
-    });
+  spawnLifeFood() {
+      const lifeFoodInstance = this.createLifeFood();
+      this.lifeFood.push(lifeFoodInstance);
+  }
 }
