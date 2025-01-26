@@ -9,8 +9,7 @@ export class Preloader extends Scene
 
     init ()
     {
-        //  We loaded this image in our Boot Scene, so we can display it here
-        this.add.image(960, 540, 'preloader');
+        this.add.rectangle(960, 540, 1920, 1080, 0x000000); // Fullscreen black rectangle
 
         //  A simple progress bar. This is the outline of the bar.
         this.add.rectangle(960, 540, 468, 32).setStrokeStyle(1, 0xffffff);
@@ -33,6 +32,8 @@ export class Preloader extends Scene
         this.load.setPath('assets');
 
         this.load.image('background', 'background.png');
+        this.load.image('fire_bubble', 'fire_bubble.png');
+        this.load.image('main_menu_bg', 'main_menu.png');
         this.load.image('fogo', 'fogo.png');
         this.load.image('trovao', 'trovao.png');
         this.load.image('game_over', 'game_over.png');

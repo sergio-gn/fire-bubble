@@ -17,7 +17,7 @@ export class MainMenu extends Scene {
             strokeThickness: 8,
         };
 
-        this.add.image(960, 540, "background");
+        this.add.image(960, 540, "main_menu_bg");
 
         const logo = this.add.image(960, 540, "logo").setAlpha(0); // Set initial alpha to 0
 
@@ -30,10 +30,10 @@ export class MainMenu extends Scene {
 
         this.add.text(32, 32, `High Score: ${score}`, textStyle);
 
-        const instructions = ["Clique com o mouse para iniciar"];
+        const instructions = ["Clique com o botão esquerdo do mouse ou A do controle para começar"];
 
         this.add
-            .text(960, 740, instructions, textStyle)
+            .text(960, 840, instructions, textStyle)
             .setAlign("center")
             .setOrigin(0.5);
 

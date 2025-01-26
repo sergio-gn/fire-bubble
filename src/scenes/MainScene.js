@@ -20,18 +20,12 @@ export class MainScene extends Scene {
     preload() {
         this.load.setPath("assets");
         this.load.image("life_food", "life_food.png");
-        this.load.spritesheet("mega_sprite", "animations/mega_sprite.png", {
-            frameWidth: 98,
+        this.load.image("fire_bubble", "fire_bubble.png");
+
+        this.load.spritesheet("mega_sprite_player","animations/mega_sprite_holding_fire.png",{
+            frameWidth: 120,
             frameHeight: 136,
         });
-        this.load.spritesheet(
-            "mega_sprite_player",
-            "animations/mega_sprite_holding_fire.png",
-            {
-                frameWidth: 120,
-                frameHeight: 136,
-            }
-        );
         this.load.spritesheet("idle_sprite", "animations/idle_sprite.png", {
             frameWidth: 98,
             frameHeight: 136,
@@ -44,6 +38,25 @@ export class MainScene extends Scene {
                 frameHeight: 136,
             }
         );
+        this.load.spritesheet("npc1_walk", "animations/mega_spritesheet_npc_1.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
+        
+        this.load.spritesheet("npc1_idle", "animations/npc_idle_1.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
+        
+        this.load.spritesheet("npc2_walk", "animations/mega_spritesheet_npc_2.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
+        
+        this.load.spritesheet("npc2_idle", "animations/npc_idle_2.png", {
+            frameWidth: 98,
+            frameHeight: 136,
+        });
         this.load.spritesheet("fire_sprite", "animations/fire_sprite.png", {
             frameWidth: 49,
             frameHeight: 102,
@@ -61,6 +74,12 @@ export class MainScene extends Scene {
         this.bg2 = this.add.image(0, 0, "bg2").setOrigin(0, 0);
         this.bg2.setDisplaySize(3500, 3500).setDepth(-1);
 
+        //Fire Bubble
+        this.fire_bubble = this.physics.add.image(500, 500, "fire_bubble")
+        .setOrigin(0.5)
+        .setDisplaySize(400, 400)
+        .setDepth(3);
+    
         // Barra de Sobrevivência
         this.add
             .rectangle(1600, 32, 468, 32)
@@ -85,7 +104,7 @@ export class MainScene extends Scene {
             repeat: 0,
             onComplete: () => {
                 this.destroy();
-                this.this.start("GameOver");
+                this.scene.start("GameOver");
             },
         });
 
@@ -124,10 +143,6 @@ export class MainScene extends Scene {
             .setCollideWorldBounds(true)
             .setDepth(2);
 
-        // this.npc = this.physics.add
-        //     .sprite(1750, 1750, "mega_sprite")
-        //     .setCollideWorldBounds(true);
-
         this.torch = this.physics.add
             .sprite(1780, 1750, "fire_sprite")
             .setDepth(1);
@@ -135,16 +150,6 @@ export class MainScene extends Scene {
         this.anims.create({
             key: "walk",
             frames: this.anims.generateFrameNumbers("mega_sprite_player", {
-                start: 0,
-                end: 17,
-            }),
-            frameRate: 8,
-            repeat: -1,
-        });
-
-        this.anims.create({
-            key: "walk-npc",
-            frames: this.anims.generateFrameNumbers("mega_sprite", {
                 start: 0,
                 end: 17,
             }),
@@ -173,14 +178,33 @@ export class MainScene extends Scene {
         });
 
         this.anims.create({
-            key: "idle-npc",
-            frames: this.anims.generateFrameNumbers("idle_sprite", {
-                start: 0,
-                end: 3,
-            }),
+            key: "npc1-walk",
+            frames: this.anims.generateFrameNumbers("npc1_walk", { start: 0, end: 18 }),
             frameRate: 8,
             repeat: -1,
         });
+        
+        this.anims.create({
+            key: "npc1-idle",
+            frames: this.anims.generateFrameNumbers("npc1_idle", { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        
+        this.anims.create({
+            key: "npc2-walk",
+            frames: this.anims.generateFrameNumbers("npc2_walk", { start: 0, end: 18 }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        
+        this.anims.create({
+            key: "npc2-idle",
+            frames: this.anims.generateFrameNumbers("npc2_idle", { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1,
+        });
+        
 
         // Configurando os controles
         this.controls = this.createControls(300);
@@ -229,6 +253,11 @@ export class MainScene extends Scene {
         this.lifeFood.forEach((food) => {
             food.update(this.player);
         });
+
+        const speed = 0.05; // Adjust speed for smooth following
+        this.fire_bubble.x = Phaser.Math.Interpolation.Linear([this.fire_bubble.x, this.player.x], speed);
+        this.fire_bubble.y = Phaser.Math.Interpolation.Linear([this.fire_bubble.y, this.player.y], speed);
+
     }
 
     updateScore() {
@@ -310,15 +339,27 @@ export class MainScene extends Scene {
             frameRate: 8,
             repeat: -1,
         });
-        this.anims.create({
-            key: "idle-npc",
-            frames: this.anims.generateFrameNumbers("idle_sprite", {
-                start: 0,
-                end: 3,
-            }),
-            frameRate: 8,
-            repeat: -1,
+        const npcConfigs = [
+            { id: "npc1", walkSprite: "mega_spritesheet_npc_1", idleSprite: "npc_idle_1" },
+            { id: "npc2", walkSprite: "mega_spritesheet_npc_2", idleSprite: "npc_idle_2" }
+        ];
+        
+        npcConfigs.forEach(npc => {
+            this.anims.create({
+                key: `idle-${npc.id}`,
+                frames: this.anims.generateFrameNumbers(npc.idleSprite, { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1,
+            });
+        
+            this.anims.create({
+                key: `walk-${npc.id}`,
+                frames: this.anims.generateFrameNumbers(npc.walkSprite, { start: 0, end: 17 }),
+                frameRate: 8,
+                repeat: -1,
+            });
         });
+        
         this.torch.anims.play("fire-torch");
 
         return {
@@ -400,16 +441,31 @@ export class MainScene extends Scene {
     createNPC() {
         const x = Phaser.Math.Between(0, 3500);
         const y = Phaser.Math.Between(0, 3500);
-        const randomFrame = Phaser.Math.Between(0, 17);
-  
+        const randomFrame = Phaser.Math.Between(0, 3);
+    
+        // Randomly choose NPC 1 or NPC 2
+        const npcChoice = Phaser.Math.Between(1, 2); // Choose either npc1 or npc2
+    
+        // Set sprite and animations based on the chosen NPC
+        let spriteKey, idleAnim, walkAnim;
+        if (npcChoice === 1) {
+            spriteKey = "npc1_idle"; // NPC 1's idle sprite
+            idleAnim = "npc1-idle";  // NPC 1's idle animation
+            walkAnim = "npc1-walk";  // NPC 1's walk animation
+        } else {
+            spriteKey = "npc2_idle"; // NPC 2's idle sprite
+            idleAnim = "npc2-idle";  // NPC 2's idle animation
+            walkAnim = "npc2-walk";  // NPC 2's walk animation
+        }
+    
         const npc = {
             sprite: this.physics.add
-                .sprite(x, y, "idle-npc", 0)
+                .sprite(x, y, spriteKey, randomFrame)  // Use the randomFrame for initial frame
                 .setCollideWorldBounds(true)
-                .play("idle-npc"),
+                .play(idleAnim),  // Start with the idle animation for the chosen NPC
             isFollowing: false,
             isAlly: false,
-  
+    
             update(player, allNpcs, playerMoving) {
                 const distanceToPlayer = Phaser.Math.Distance.Between(
                     npc.sprite.x,
@@ -417,37 +473,39 @@ export class MainScene extends Scene {
                     player.x,
                     player.y
                 );
-  
+    
                 if (distanceToPlayer < 50 && !npc.isAlly) {
                     npc.isFollowing = true;
                     npc.isAlly = true;
                 }
-  
+    
                 if (npc.isAlly && npc.isFollowing) {
                     const allies = allNpcs.filter((n) => n.isAlly);
                     const totalAllies = allies.length;
-  
+    
                     const index = allies.indexOf(npc);
                     const angle = (index / totalAllies) * Phaser.Math.PI2;
                     const radius = 100;
-  
+    
                     const targetX = player.x + radius * Math.cos(angle);
                     const targetY = player.y + radius * Math.sin(angle);
-  
+    
                     npc.sprite.x += (targetX - npc.sprite.x) * 0.1;
                     npc.sprite.y += (targetY - npc.sprite.y) * 0.1;
-  
+    
+                    // Switch between walk and idle animations based on player movement
                     if (playerMoving) {
-                        npc.sprite.anims.play("walk-right", true);
+                        npc.sprite.anims.play(walkAnim, true);  // Play walking animation
                     } else {
-                        npc.sprite.anims.play("walk-down", true);
+                        npc.sprite.anims.play(idleAnim, true);  // Play idle animation
                     }
                 }
             },
         };
-  
+    
         return npc;
     }
+    
 
     spawnNPC() {
         const npcInstance = this.createNPC();
@@ -471,15 +529,45 @@ export class MainScene extends Scene {
                 );
 
                 if (distance < 50) {
-                    food.destroy();
+                    if (this.bar.width !== 468) {
+                        console.log("Comida coletada!");
 
-                    // Adiciona 5 segundos ao tempo de sobrevivência da barra
-                    this.barTween.stop();
-                    const remainingWidth = this.bar.width;
-                    this.bar.width = 468; // Reset survival bar to full
-                    this.barTween.restart({
-                        duration: 20000 - (20 - remainingWidth / 468) * 20000, // adjust the duration to reflect the added time
-                    });
+                        food.destroy();
+
+                        // Remove do array de comidas
+                        this.lifeFood = this.lifeFood.filter(
+                            (f) => f.sprite !== food
+                        );
+
+                        // Para o tween atual
+                        this.barTween.stop();
+
+                        console.log("Largura antes:", this.bar.width);
+
+                        // Ajusta a largura da barra sem recriá-la
+                        const newWidth = Math.min(
+                            this.bar.width + (5 / 20) * 468,
+                            468
+                        );
+                        this.bar.width = newWidth;
+
+                        this.bar.displayWidth = newWidth;
+                        console.log("Nova largura:", this.bar.width);
+
+                        // Reinicia o tween ajustando o tempo restante
+                        const newDuration = 20000 * (newWidth / 468);
+
+                        this.barTween = this.tweens.add({
+                            targets: this.bar,
+                            width: 0,
+                            duration: newDuration,
+                            repeat: 0,
+                            onComplete: () => {
+                                this.destroy();
+                                this.scene.start("GameOver");
+                            },
+                        });
+                    }
                 }
             },
         };
